@@ -1,22 +1,11 @@
 import random
 
 # dictionary with act as key and corresponding words as values
-rules = {}
-rules['ack'] = ['okay', 'okay um', 'alright']
-rules['affirm'] = ['yes right', 'right', 'yes']
-rules['bye'] = ['see you', 'good bye', 'bye']
-rules['confirm'] = ['is it']
-rules['deny'] = ['i dont want']
-rules['hello'] = ['hi', 'hello']
-rules['inform'] = ['looking for']
-rules['negate'] = ['no']
-rules['repeat'] = ['can you repeat that', 'what did you say']
-rules['reqalts'] = ['how about']
-rules['reqmore'] = ['more']
-rules['request'] = ['what is', 'where']
-rules['restart'] = ['start over']
-rules['thankyou'] = ['thank you', 'thanks']
-
+rules = {'ack': ['okay', 'okay um', 'alright'], 'affirm': ['yes right', 'right', 'yes'],
+         'bye': ['see you', 'good bye', 'bye'], 'confirm': ['is it'], 'deny': ['i dont want'], 'hello': ['hi', 'hello'],
+         'inform': ['looking for'], 'negate': ['no'], 'repeat': ['can you repeat that', 'what did you say'],
+         'reqalts': ['how about'], 'reqmore': ['more'], 'request': ['what is', 'where'], 'restart': ['start over'],
+         'thankyou': ['thank you', 'thanks']}
 
 not_aborted = True
 while not_aborted:
