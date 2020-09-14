@@ -39,10 +39,11 @@ x_train_counts = BOW_vect.fit_transform(x_train)
 # Scoring the model on the vectorised sentences and train target using cross validation
 clf = DecisionTreeClassifier()
 print('\nExecuting a 5-fold cross-validation over the train set...')
-scores = cross_val_score(clf, x_train_counts, y_train, scoring='accuracy', cv=3)
-print(f"Accuracy: {scores.mean():0.2} (+/- {scores.std() * 2:0.2})")
+for score in ["accuracy", "precision_macro", "recall_macro"]:
+    scores = cross_val_score(clf, x_train_counts, y_train, scoring=score, cv=3)
+    print(f"{score}: {scores.mean():0.2} (+/- {scores.std() * 2:0.2})")
 
-# Fitting the model on the training set
+# Fitting the model on the training set and getting the final training score
 clf.fit(x_train_counts, y_train)
 
 # Getting the accuracy of the fitted model on the test set:

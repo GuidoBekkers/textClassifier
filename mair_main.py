@@ -4,10 +4,10 @@ from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import SGDClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
-from mair_part1 import load_and_preprocess
+from load_and_preprocess import load_and_preprocess
 
 if sys.argv[1] == 'majority':
-    y_train, y_test = load_and_preprocess.load_and_preprocess("dialog_acts.dat", majority_class=True)
+    y_train, y_test = load_and_preprocess("dialog_acts.dat", majority_class=True)
 
     # The accuracy on the test set
     y_pred = y_train.value_counts().idxmax()
@@ -55,7 +55,7 @@ elif sys.argv[1] == 'rule':
 
 else:
 
-    x_train_counts, y_train, BOW_vect, x_test, y_test = load_and_preprocess.load_and_preprocess("dialog_acts.dat")
+    x_train_counts, y_train, BOW_vect, x_test, y_test = load_and_preprocess("dialog_acts.dat")
 
     if sys.argv[1] == 'mlp':
         clf = MLPClassifier()
@@ -73,7 +73,9 @@ else:
     print('\nExecuting a 5-fold cross-validation over the train set...')
 
     try:
-        scores = cross_val_score(clf, x_train_counts, y_train, scoring='accuracy', cv=3)
+        for score in ["accuracy", "precision_macro", "recall_macro"]:
+            scores = cross_val_score(clf, x_train_counts, y_train, scoring=score, cv=3)
+            print(f"{score}: {scores.mean():0.2} (+/- {scores.std() * 2:0.2})")
     except NameError:
         print('Classifier not recognised')
         sys.exit(0)
