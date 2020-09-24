@@ -3,29 +3,27 @@ import Levenshtein as ls
 
 
 def keyword_matching(sentence, slot):
-    for w in sentence.split():
-        if w in keywords[slot]:
-            return w
+    for kw in keywords[slot]:
+        if kw in sentence:
+            return kw
 
 
 def pattern_matching(sentence, slot):
     max_dist = 3
     i = max_dist + 1
     res = None
-    wordlist = sentence.split()
-    for w in wordlist:
-        if w in patterns[slot]:
-            index = wordlist.index(w) - 1
-            match = wordlist[index]
+    for p in patterns[slot]:
+        if p in sentence:
+            sl = sentence.split(p, 1)[0].split()
+            while len(sl) > 2:
+                sl.pop(0)   # now sl is a list that contains two strings that appear before the pattern word
             for value in keywords[slot]:
-                dist = ls.distance(match, value)
+                dist = min(ls.distance(sl[-1], value), ls.distance(sl[0] + " " + sl[1], value))
                 if dist <= max_dist and dist < i:
                     i = dist
                     res = value
             return res
 
-
-# sentence = 'i want moderateley priced spenish food'
 
 def handle_suggestion(matchlist=None):
     if matchlist == None:
@@ -76,6 +74,8 @@ def area_to_sentence_par(area):
     else:
         return area + " part of town"
 
+def classify_utterance(string):
+    return clf.predict(BOW_vect.transform([string.lower()]))
 
 def check_for_bye():
     response = clf.predict(BOW_vect.transform([input().lower()]))
@@ -105,37 +105,42 @@ def lookup(area=None, food=None, pricerange=None):
 
     return restaurants
 
-def information_loop():
-    while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
 
+def information_loop():
+    slot_question = None
+    slots_found = []
+    while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
         utterance = input()
 
         dialog_act_classifier = 'inform'
 
-        # if dialog_act_classifier(utterance) == 'inform':
+        if slot_question is not None:
+            if 'any' in utterance or 'do not care' in utterance:
+                slots[slot_question] = 'any'
+                slots_found.append(slot_question)
         if dialog_act_classifier == 'inform':
-            subtract_information_and_update_slots(utterance)
+            slots_found = subtract_information_and_update_slots(utterance)
 
-        check_slots()
+        for slot in slots_found:
+            confirmation_question(slot, slots[slot])
+            answer = input()
+            if classify_utterance(answer) != 'affirm':
+                slots[slot] = None
+
+        print(slots)
+        slot_question = check_slots()
 
 
 def subtract_information_and_update_slots(utterance):
-    # use keywords to obtain domain and new information
-
-    # utterance = utterance.split()
-
-    # domain = utterance[0]
-
-    # new_information_about_domain = utterance[1:]
-
+    filled_slots = []
     for key in filter(lambda x: slots[x] is None, slots):
         slots[key] = keyword_matching(utterance, key)
-        if slots[key] is None:
+        if slots[key] is None and pattern_matching(utterance, key) is not None:
             slots[key] = pattern_matching(utterance, key)
-
-    # if domain in slots.keys():
-
-    # slots[domain] = new_information_about_domain
+            filled_slots.append(key)
+        else:
+            filled_slots.append(key)
+    return filled_slots
 
 
 def check_slots():
@@ -143,14 +148,18 @@ def check_slots():
         # Code could be used in order to have multiple questions
         print(area_questions[0])
         area_questions.remove(area_questions[0])
+        return 'area'
 
     elif not slots['pricerange']:
         print(pricerange_questions[0])
         pricerange_questions.remove(pricerange_questions[0])
+        return 'pricerange'
 
     elif not slots['food']:
         print(food_questions[0])
         food_questions.remove(food_questions[0])
+        return 'food'
+    return None
 
 
 slots = {}
@@ -169,7 +178,16 @@ pricerange_questions = ['What pricerange were you thinking of?',
 food_questions = ['Do you have any specific preferences regarding the type of food?',
                   'Could you state what food you want?']
 
-df = pd.read_csv('/content/drive/My Drive/restaurant_info.csv')
+def confirmation_question(slot, keyword):
+    if slot == 'food':
+        print('So you want to eat {} food?'.format(keyword))
+    if slot == 'pricerange':
+        print('So you want a {} price?'.format(keyword))
+    if slot == 'area':
+        print('So you want to eat in the {} area?'.format(keyword))
+
+
+df = pd.read_csv('restaurant_info.csv')
 keywords = {'food': list(dict.fromkeys(list(df.food))),
             'area': ['west', 'north', 'south', 'centre', 'east'],
             'pricerange': ['cheap', 'moderate', 'expensive'],
@@ -189,10 +207,10 @@ def main():
 
     # print(return_match_from_matchlist(slots))
 
-    antwoord = handle_suggestion(slots, return_match_from_matchlist(slots))
+    antwoord = handle_suggestion(return_match_from_matchlist(slots))
     if antwoord == None:  # Als er geen restaurant is gevonden met de slots, moet hij opnieuw de slots vullen
         information_loop()
-        handle_suggestion(slots, return_match_from_matchlist(slots))
+        handle_suggestion(return_match_from_matchlist(slots))
 
 
 main()
