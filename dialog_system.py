@@ -1,5 +1,14 @@
 import pandas as pd
 import Levenshtein as ls
+from joblib import dump, load
+
+
+def initialize_classifier():
+    return load('SVM.joblib') # todo initialize different models
+
+
+def initialize_vectorizer():
+    return load('BOW_vect.joblib')
 
 
 def keyword_matching(sentence, slot):
@@ -28,20 +37,19 @@ def pattern_matching(sentence, slot):
 # sentence = 'i want moderateley priced spenish food'
 
 def handle_suggestion(matchlist=None):
-    if len(matchlist) == 0:
-        return None
     while len(matchlist) > 0:
         print(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
             0, 3] + ".")
-        response = clf.predict(BOW_vect.transform([input().lower()]))
+
+        response = dialog_act_classifier(input()) # response is een act
         if response == 'affirm':
             print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
                   matchlist.iloc[0, 4] + ".")
             return check_for_bye()  # In principe is hij nu klaar, aangezien de suggestie geaccepteerd is
         elif response == 'inform' or response == 'request':
-            responseN = response
+            responseN = response # todo vragen waarom martijn dit doet
             while responseN == 'inform' or responseN == 'request':  # als de user om het adres of telefoonnummer vraagt
-                askedInformation = keywordMatching(responseN)  # "adress" / "what is the adress?" --> "adress"
+                askedInformation = keywordMatching(responseN)  # "adress" / "what is the adress?" --> "adress" # todo dit niet vergeten
                 if askedInformation == "adress":
                     print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
                 elif askedInformation == "phone number":
@@ -61,7 +69,7 @@ def handle_suggestion(matchlist=None):
     return None
 
 
-def return_match_from_matchlist(slots): # Remove this function entirely
+def return_match_from_matchlist(slots):  # Remove this function entirely
     matchlist = lookup(slots["area"], slots["food"], slots["pricerange"])
     if len(matchlist) == 0:
         print("Apologies, no restaurant that serves " + slots["food"] + " was found.")
@@ -110,23 +118,23 @@ def lookup(restaurants, area=None, food=None, pricerange=None):
     return restaurants
 
 
+def dialog_act_classifier(utterance):
+    vectorized_utterance = BOW_vect.transform([utterance.lower()])
+    return clf.predict(vectorized_utterance)
+
+
 def information_loop(restaurants):
     while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
 
-        utterance = input()
+        utterance = input().lower()
 
-        dialog_act_classifier = 'inform'
-
-        # if dialog_act_classifier(utterance) == 'inform':
-        if dialog_act_classifier == 'inform':
+        if dialog_act_classifier(utterance) == 'inform':
             subtract_information_and_update_slots(utterance)
 
         matched_restaurants = lookup(restaurants)
         if len(matched_restaurants) > 1:
             check_slots()
-        elif len(matched_restaurants) == 0:
-            break
-        elif len(matched_restaurants) == 1:
+        elif len(matched_restaurants) < 2:
             break
     return matched_restaurants
 
@@ -179,8 +187,12 @@ pricerange_questions = ['What pricerange were you thinking of?',
 food_questions = ['Do you have any specific preferences regarding the type of food?',
                   'Could you state what food you want?']
 
-df = pd.read_csv('/content/drive/My Drive/restaurant_info.csv')
-keywords = {'food': list(dict.fromkeys(list(df.food))),
+
+restaurants = load_restaurants()
+clf = initialize_classifier()
+BOW_vect = initialize_vectorizer()
+
+keywords = {'food': list(dict.fromkeys(list(restaurants.food))),
             'area': ['west', 'north', 'south', 'centre', 'east'],
             'pricerange': ['cheap', 'moderate', 'expensive'],
             'type': ['restaurant', 'bar', 'brasserie']
@@ -191,24 +203,15 @@ patterns = {'food': ['food'],
             'type': []
             }
 
-restaurants = load_restaurants()
-
-
 def main():
     print('Welcome, how can I help you?')
     matched_restaurants = information_loop(restaurants)
 
     if len(matched_restaurants) == 0:
-        pass # todo give alternatives function
+        pass  # todo give alternatives function (option a and option b)
     elif len(matched_restaurants) == 1:
-        pass # todo Handle suggestion function
+        pass  # todo Handle suggestion function
     elif len(matched_restaurants) > 1:
-        handle_suggestion(return_match_from_matchlist(slots)) # Todo remove return match from matchlist function inplace of a simple pandas pop function
-
-    # antwoord = handle_suggestion(return_match_from_matchlist(slots))
-    # if antwoord == None:  # Als er geen restaurant is gevonden met de slots, moet hij opnieuw de slots vullen
-    #     information_loop(restaurants)
-    #     handle_suggestion(return_match_from_matchlist(slots))
-
+        handle_suggestion(return_match_from_matchlist(slots))  # Todo remove return match from matchlist function
 
 main()
