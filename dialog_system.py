@@ -28,7 +28,7 @@ def pattern_matching(sentence, slot):
 # sentence = 'i want moderateley priced spenish food'
 
 def handle_suggestion(matchlist=None):
-    if matchlist == None:
+    if len(matchlist) == 0:
         return None
     while len(matchlist) > 0:
         print(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
@@ -61,7 +61,7 @@ def handle_suggestion(matchlist=None):
     return None
 
 
-def return_match_from_matchlist(slots):
+def return_match_from_matchlist(slots): # Remove this function entirely
     matchlist = lookup(slots["area"], slots["food"], slots["pricerange"])
     if len(matchlist) == 0:
         print("Apologies, no restaurant that serves " + slots["food"] + " was found.")
@@ -89,6 +89,7 @@ def load_restaurants():
     restaurants = pd.read_csv('restaurant_info.csv')
     return restaurants
 
+
 def lookup(restaurants, area=None, food=None, pricerange=None):
     """Looks up the restaurant(s) from the csv based on the preferences given by the user.
     :type area:str
@@ -108,6 +109,7 @@ def lookup(restaurants, area=None, food=None, pricerange=None):
 
     return restaurants
 
+
 def information_loop(restaurants):
     while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
 
@@ -119,7 +121,14 @@ def information_loop(restaurants):
         if dialog_act_classifier == 'inform':
             subtract_information_and_update_slots(utterance)
 
-        check_slots()
+        matched_restaurants = lookup(restaurants)
+        if len(matched_restaurants) > 1:
+            check_slots()
+        elif len(matched_restaurants) == 0:
+            break
+        elif len(matched_restaurants) == 1:
+            break
+    return matched_restaurants
 
 
 def subtract_information_and_update_slots(utterance):
@@ -163,8 +172,6 @@ slots['area'] = None
 slots['pricerange'] = None
 slots['food'] = None
 
-print(slots)
-
 area_questions = ['Which area would you like to dine in?',
                   'Could you give a specific area?']  # Questions could be in a list to have multiple questions
 pricerange_questions = ['What pricerange were you thinking of?',
@@ -186,16 +193,22 @@ patterns = {'food': ['food'],
 
 restaurants = load_restaurants()
 
+
 def main():
     print('Welcome, how can I help you?')
-    information_loop(restaurants)
+    matched_restaurants = information_loop(restaurants)
 
-    # print(return_match_from_matchlist(slots))
+    if len(matched_restaurants) == 0:
+        pass # todo give alternatives function
+    elif len(matched_restaurants) == 1:
+        pass # todo Handle suggestion function
+    elif len(matched_restaurants) > 1:
+        handle_suggestion(return_match_from_matchlist(slots)) # Todo remove return match from matchlist function inplace of a simple pandas pop function
 
-    antwoord = handle_suggestion(slots, return_match_from_matchlist(slots))
-    if antwoord == None:  # Als er geen restaurant is gevonden met de slots, moet hij opnieuw de slots vullen
-        information_loop()
-        handle_suggestion(slots, return_match_from_matchlist(slots))
+    # antwoord = handle_suggestion(return_match_from_matchlist(slots))
+    # if antwoord == None:  # Als er geen restaurant is gevonden met de slots, moet hij opnieuw de slots vullen
+    #     information_loop(restaurants)
+    #     handle_suggestion(return_match_from_matchlist(slots))
 
 
 main()
