@@ -85,14 +85,17 @@ def check_for_bye():
         return "unknown"
 
 
-def lookup(area=None, food=None, pricerange=None):
+def load_restaurants():
+    restaurants = pd.read_csv('restaurant_info.csv')
+    return restaurants
+
+def lookup(restaurants, area=None, food=None, pricerange=None):
     """Looks up the restaurant(s) from the csv based on the preferences given by the user.
     :type area:str
     :type food:str
     :type pricerange: str
     :return restaurants: DataFrame
     """
-    restaurants = pd.read_csv('restaurant_info.csv')
     if area is not None:
         area = area.lower()
         restaurants = restaurants[(restaurants.area == area)]
@@ -105,7 +108,7 @@ def lookup(area=None, food=None, pricerange=None):
 
     return restaurants
 
-def information_loop():
+def information_loop(restaurants):
     while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
 
         utterance = input()
@@ -181,11 +184,11 @@ patterns = {'food': ['food'],
             'type': []
             }
 
+restaurants = load_restaurants()
 
 def main():
     print('Welcome, how can I help you?')
-
-    information_loop()
+    information_loop(restaurants)
 
     # print(return_match_from_matchlist(slots))
 
