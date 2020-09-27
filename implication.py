@@ -186,21 +186,23 @@ class Implications(object):
         self.impliLongTime1 = Implication(2, self.fvSpanish, "long time", True, 1, 1)
         self.impliLongTime2 = Implication(3, self.fvBusy, "long time", True, 2, 1)
         self.impliChildren1 = Implication(4, self.fvLongTime, "children", False, 2, 1)
-        self.impliRomantic1 = Implication(5, self.fvBusy, "romantic", False, 2, 1)
+        self.impliRomantic1 = Implication(5, self.fvBusy, "romantic", False, 2, 3)
         self.impliRomantic2 = Implication(6, self.fvLongTime, "romantic", True, 2, 2)
         # New rules
         self.impliDirty1 = Implication(7, self.fvPets, "dirty", True, 1, 1)
         self.impliMany1 = Implication(8, self.featureMultiCentre, "many tourists", True, 1, 1)
         self.impliSpicy1 = Implication(9, self.featureSpicy, "spicy", True, 1, 1)
-        self.impliRomantic3 = Implication(10, self.fvDirty, "romantic", False, 2, 3)
-        self.impliTouristTrap1 = Implication(11, self.featureManyExpensive, "tourist trap", True, 2, 1)
-        self.impliMany2 = Implication(12, self.featureSpicyMulti, "many tourists", True, 2, 1)
-        self.impliChildren2 = Implication(13, self.featureNotSpicyPets, "children", True, 2, 2)
+        self.impliRomantic3 = Implication(10, self.fvGoodFood, "romantic", True, 1, 2)
+
+        self.impliRomantic4 = Implication(11, self.fvDirty, "romantic", False, 2, 6)
+        self.impliTouristTrap1 = Implication(12, self.featureManyExpensive, "tourist trap", True, 2, 1)
+        self.impliMany2 = Implication(13, self.featureSpicyMulti, "many tourists", True, 2, 1)
+        self.impliChildren2 = Implication(14, self.featureNotSpicyPets, "children", True, 2, 2)
 
         self.implicationRules = [self.impliBusy1, self.impliLongTime1, self.impliLongTime2, self.impliChildren1,
                                  self.impliRomantic1, self.impliRomantic2, self.impliDirty1, self.impliMany1,
-                                 self.impliSpicy1, self.impliRomantic3, self.impliTouristTrap1, self.impliMany2,
-                                 self.impliChildren2]
+                                 self.impliSpicy1, self.impliRomantic3, self.impliRomantic4, self.impliTouristTrap1,
+                                 self.impliMany2, self.impliChildren2]
 
     def getFeatureValue(self, name: str):
         if name in self.featureValues:
@@ -218,44 +220,78 @@ class Implications(object):
     def featuresToDictionary(self):
         answer = {}
         for i in self.featureValues:
-            answer[i] = self.featureValues[i].truthValue
+            if self.featureValues[i].columnIndex == -1:  # Hij moet niet al bestaande kolommen teruggeven
+                answer[i] = self.featureValues[i].truthValue
         return answer
 
 
-def getConsequences(restaurant):
+def transposeList(input_: list):
+    return list(map(list, zip(*input_)))
+
+
+def solveConclusions(conclusions: list):
+    answer = []
+    for i in conclusions:
+        if len(answer) > 0:
+            index = listContainsConclusion(answer, i[0])
+            #print("Bigger than 0 : " + str(len(answer))+",    index: " + str(index))
+            if index > -1:
+                #print("~~~~ MERGE ~~~~~")
+                answer[index] = mergeConclusions(answer[index], i)
+            else:
+                #print("~ ~ ~ ~~ VERGELIJK ~ ~ ~ ~ ~ ~ ~ ~ ~ ")
+                #print(i)
+                #print(answer)
+                answer.append(i)
+        else:
+            answer.append(i)
+    return answer
+
+
+def listContainsConclusion(list_: list, name: str):
+    for i in range(0, len(list_)):
+        #print("Contains? ")
+        #print(str(list_[i][0]) + " <> " + name + " == " + str(list_[i][0] is name) + " OR " + str(list_[i][0] == name))
+        if list_[i][0] == name:
+            return i
+    return -1
+
+
+def mergeConclusions(conclusion1, conclusion2):
+    value1 = conclusion1[2] if conclusion1[1] is True else -1 * conclusion1[2]
+    value2 = conclusion2[2] if conclusion2[1] is True else -1 * conclusion2[2]
+    if set(conclusion2[3]) <= set(conclusion1[3]):
+        return conclusion1
+    return (conclusion1[0], True if value1 + value2 > 0 else False, abs(value1+value2), conclusion1[3]+conclusion2[3])
+
+
+def getConsequencesSingle(restaurant):
     implications_ = Implications()
     rules = implications_.implicationRules
     changedValues = True
     loopNumber = 1
     conclusions = []
     iteratie = 0
-    while(changedValues and iteratie < 5):
+    while changedValues and iteratie < 5:
         for i in range(0, len(rules)):
             if rules[i].level == loopNumber:
                 tijdelijkFV = rules[i].getFeatureValue(restaurant)
                 if tijdelijkFV.truthValue == rules[i].cValue:       # changed: consequence value is returned
-                    print(str(tijdelijkFV.name) + " = " + str(tijdelijkFV.truthValue) + " with importance " + str(rules[i].importance))
-                    conclusions.append((tijdelijkFV.name, tijdelijkFV.truthValue))
-        newInfo = False
+                    conclusions.append((tijdelijkFV.name, tijdelijkFV.truthValue, rules[i].importance, [rules[i].id_]))
+        conclusions = solveConclusions(conclusions)
+        changedValues = False
         for i in conclusions:           # sterkte van regel wordt nog niet gebruikt
-            txtt = implications_.getFeatureValue(i[0])
-            txtt_ = str(txtt) if txtt == False else txtt.name + " == " + str(txtt.truthValue)
-            #print(str(i[0]) + ", " + str(i[1]) + " -->> " + txtt_)
             newValue = implications_.setFeatureValue(i[0], i[1])
             if newValue == -1:
-                #print("ERROR: None, " + i[0] + " is not a featureValue?")
                 return None
             elif newValue == 1:
-                #print("NIEUWE WAARDE! ! ! !  ! ! ! ! ! ! !! ! ! ! ! ! ")
-                newInfo = True
-        changedValues = newInfo
+                changedValues = True
         if loopNumber == 1:
             loopNumber = 2
             changedValues = True
-        print(loopNumber)
-        print("change? " + str(changedValues))
         iteratie += 1
     return implications_.featuresToDictionary()
+
 
 def printRules():
     temp_ = Implications()
@@ -263,74 +299,27 @@ def printRules():
     for i in range(0, len(rules)):
         print(rules[i].toString())
 
-zoek = pd.read_csv('restaurant_info4.csv')
-eerste = zoek.iloc[4]
-print(eerste)
-woordenboek = getConsequences(eerste)
-print("~~~~~~~~ RULES ~~~~~~~~")
-printRules()
+
+def getConsequences(restaurants: list):
+    if restaurants is None:
+        return None
+    dictValues = []
+    for i in range(0, restaurants.shape[0]):
+        dictValues.append(list(getConsequencesSingle(restaurants.iloc[i]).values()))
+    transposed = transposeList(dictValues)
+    dictionary0 = list(getConsequencesSingle(restaurants.iloc[0]).keys())
+    for i in range(0, len(transposed)):
+        restaurants.insert(len(restaurants.columns), dictionary0[i], transposed[i], False)
 
 
+#zoek = pd.read_csv('restaurant_info4.csv')
+#eerste = zoek.iloc[14:15]
+#getConsequences(eerste)
 
-"""
-tijdelijk = Implications()
-tff = tijdelijk.getFeatureValue("romantic2")
-if tff is not False:
-    print(tff.truthValue)
-else:
-    print("N O N E")
-succes = tijdelijk.setFeatureValue("romantic", True)
-print(str(succes) + " >> ")
-tff = tijdelijk.getFeatureValue("romantic2")
-if tff is not False:
-    print(tff.truthValue)
-else:
-    print("N O N E")
-
-
-zoek = pd.read_csv('restaurant_info.csv')
-zoek1 = zoek.iloc[0]
-# print(zoek.iloc[0])
-
-waarde1 = FeatureValue("area", 2, "north")
-waarde2 = FeatureValue("food", 3, "british")
-#print(waarde1.getTruthValue(zoek1))
-#print(waarde2.getTruthValue(zoek1))
-fvArea = FeatureValue("area", 2, "north")
-fvFood = FeatureValue("food", 3, "british")
-fvPrice = FeatureValue("price", 1, "moderate")
-fvTrue = FeatureValue("true", -1, None, True)
-featureNotNorth = Feature("notNorth", [fvArea], Function.NOT)
-feat1 = Feature("test", [featureNotNorth, fvFood, fvTrue], Function.AND)
-print("~~~~~~~~feature test~~~~~~~~~~")
-#featureNotNorth.print(zoek1)
-feat1.print(zoek1)
-print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-# print(feat1.getTruthValue(zoek1))
-
-
-def groet(lijstje: list):
-    for i in lijstje:
-        print("Hello " + str(i))
-
-
-#groet(["kees"])
-#groet([1, 2])
-
-
-def getColumnFromName(name):
-    if name == "pricerange":
-        return 1
-    elif name == "area":
-        return 2
-    elif name == "food":
-        return 3
-    elif name == "phone":
-        return 4
-    elif name == "addr":
-        return 5
-    elif name == "postcode":
-        return 6
-    else:
-        return 0
-"""
+def getAddressOrPhone(utterance: str):
+    answer = 0
+    if "address" in utterance:
+        answer += 1
+    if "phone" in utterance:
+        answer += 2
+    return answer
