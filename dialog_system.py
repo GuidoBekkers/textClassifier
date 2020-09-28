@@ -34,25 +34,27 @@ def pattern_matching(sentence, slot):
             return res
 
 
-# sentence = 'i want moderateley priced spenish food'
+def handle_suggestion(matchlist=None, restaurant_name=None):
+    if restaurant_name is not None:
+        matchlist = restaurants[restaurant.restaurantname == restaurant_name]
 
-def handle_suggestion(matchlist=None):
     while len(matchlist) > 0:
         print(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
             0, 3] + ".")
+        utterance = input().lower()
+        response = dialog_act_classifier(utterance) # response is een act
 
-        response = dialog_act_classifier(input()) # response is een act
         if response == 'affirm':
             print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
                   matchlist.iloc[0, 4] + ".")
-            return check_for_bye()  # In principe is hij nu klaar, aangezien de suggestie geaccepteerd is
+            utterance = input().lower()
+            return check_for_bye(utterance)
+
         elif response == 'inform' or response == 'request':
-            responseN = response # todo vragen waarom martijn dit doet
             while responseN == 'inform' or responseN == 'request':  # als de user om het adres of telefoonnummer vraagt
-                askedInformation = keywordMatching(responseN)  # "adress" / "what is the adress?" --> "adress" # todo dit niet vergeten
-                if askedInformation == "adress":
+                if 'adress' in utterance:
                     print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
-                elif askedInformation == "phone number":
+                elif 'phone' in utterance or 'number' in utterance:
                     print("The phone number is " + matchlist.iloc[0, 4] + ".")
                 else:
                     print("I am sorry, I am not able to understand, here is all the available information")
@@ -61,11 +63,12 @@ def handle_suggestion(matchlist=None):
                     print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
                         0, 6] + " and the phone number is " +
                           matchlist.iloc[0, 4] + ".")
-                responseN = clf.predict(BOW_vect.transform([input().lower()]))
-            return check_for_bye()
+                utterance = input().lower()
+                responseN = clf.predict(BOW_vect.transform(utterance))
+            return check_for_bye(utterance)
+
         else:
             matchlist = matchlist[1, :]
-    print("Apologies, there is no alternative restaurant")
     return None
 
 
@@ -85,13 +88,11 @@ def area_to_sentence_par(area):
         return area + " part of town"
 
 
-def check_for_bye():
-    response = clf.predict(BOW_vect.transform([input().lower()]))
+def check_for_bye(utterance):
+    response = clf.predict(BOW_vect.transform(utterance))
     if response == 'bye':
         return "finished"
-    else:
-        return "unknown"
-
+        quit()
 
 def load_restaurants():
     restaurants = pd.read_csv('restaurant_info.csv')
@@ -210,7 +211,7 @@ def main():
     if len(matched_restaurants) == 0:
         pass  # todo give alternatives function (option a and option b)
     elif len(matched_restaurants) == 1:
-        pass  # todo Handle suggestion function
+        pass
     elif len(matched_restaurants) > 1:
         handle_suggestion(return_match_from_matchlist(slots))  # Todo remove return match from matchlist function
 
