@@ -5,14 +5,11 @@ class Function(Enum):
     OR = 1
     AND = 0
     NOT = -1
-    LONE = 2
 
 class Implication(object):
     def __init__(self, id_: int, antecedent, consequent: str, cValue: bool, level: int, importance: int = 1):
         if not (isinstance(antecedent, Feature) or isinstance(antecedent, FeatureValue)):
             raise ValueError('Antecedent MUST be a Feature')
-        # if not isinstance(consequent, FeatureValue):
-        #    raise ValueError('consequent MUST be a FeatureValue')
         self.id_ = id_
         self.antecedent = antecedent
         self.consequent = consequent                # string, "romantic", "busy"
@@ -39,21 +36,12 @@ class Implication(object):
 
 class Feature(object):
     def __init__(self, name, valueList: list, function: Function):
-        #if len(valueList) == 0:
-        #    raise ValueError('valueList cannot be empty')
-        #if function.value == -1 and len(valueList) > 1:
-        #    raise ValueError('If function is NOT, then valueList cannot be longer than 1')
         self.valueList = valueList  # list of FeatureValues
         self.function = function    # Function (or, and, not
         self.name = name if isinstance(name, str) else self.toString()
 
     def getTruthValue(self, restaurant):
-        # print("Name = " + str(self.name))
-        if self.function.value == 2:
-            if self.valueList[0].getTruthValue(restaurant) is None:
-                return None
-            return self.valueList[0].getTruthValue(restaurant)
-        elif self.function.value == 1:
+        if self.function.value == 1:
             return self.getTruthOr(restaurant)
         elif self.function.value == 0:
             return self.getTruthAnd(restaurant)
@@ -75,12 +63,9 @@ class Feature(object):
         antwoord = True
         for i in self.valueList:
             if i.getTruthValue(restaurant) is None:
-                #print("return NONE !!!!!!!!!!!!!!")
                 return None
             if not i.getTruthValue(restaurant):
-                #print(i.toString() + " is false? " + str(i.name))
                 antwoord = False
-        #print("antwoord is .... " + str(antwoord))
         return antwoord
 
     def print(self, restaurant):
@@ -89,8 +74,6 @@ class Feature(object):
     def toString(self):
         if self.function.value == -1:
             return "(NOT " + self.valueList[0].name + ")"
-        elif self.function.value == 2:
-            return self.valueList[0].toString()
         else:
             separator = " OR " if self.function.value == 1 else " AND "
             answer = "(" + self.valueList[0].toString()
@@ -100,8 +83,6 @@ class Feature(object):
 
 class FeatureValue(object):
     def __init__(self, name: str, columnIndex, expValue, truthValue: bool = None):
-        # if truthValue is not None and not isinstance(truthValue, bool):
-        #    raise ValueError('truthValue must be a boolean or None')
         self.name = name.lower()
         self.expValue = expValue.lower() if isinstance(expValue, str) else str(expValue).lower()
         self.columnIndex = columnIndex if isinstance(columnIndex, int) else -1
@@ -112,12 +93,9 @@ class FeatureValue(object):
             return self.truthValue
         elif self.columnIndex == -1 and self.truthValue is None:
             return None
-        #print(str(restaurant.iloc[self.columnIndex]).lower() + " =? " + str(self.expValue))
         if str(restaurant.iloc[self.columnIndex]).lower() == str(self.expValue).lower():
-            #print(self.name + ": return true")
             return True
         else:
-            #print(self.name + ": return false")
             return False
 
     def toString(self):
@@ -146,12 +124,10 @@ class Implications(object):
         self.fvDirty = FeatureValue("dirty", None, None, False)
         self.fvManyTourist = FeatureValue("many tourists", None, None, False)
         self.fvSpicy = FeatureValue("spicy", None, None, False)
-        # Not used in any rule
+        # Not used in any rule antecedent
         self.fvChildren = FeatureValue("children", None, None, True)
         self.fvRomantic = FeatureValue("romantic", None, None, False)
         self.fvTouristTrap = FeatureValue("tourist trap", None, None, False)
-
-        # Romantisch --> als er goed voedsel is
 
         self.featureValues = {"pets allowed": self.fvPets,
                          "multi lang": self.fvMultiLang,
@@ -234,14 +210,9 @@ def solveConclusions(conclusions: list):
     for i in conclusions:
         if len(answer) > 0:
             index = listContainsConclusion(answer, i[0])
-            #print("Bigger than 0 : " + str(len(answer))+",    index: " + str(index))
             if index > -1:
-                #print("~~~~ MERGE ~~~~~")
                 answer[index] = mergeConclusions(answer[index], i)
             else:
-                #print("~ ~ ~ ~~ VERGELIJK ~ ~ ~ ~ ~ ~ ~ ~ ~ ")
-                #print(i)
-                #print(answer)
                 answer.append(i)
         else:
             answer.append(i)
@@ -250,8 +221,6 @@ def solveConclusions(conclusions: list):
 
 def listContainsConclusion(list_: list, name: str):
     for i in range(0, len(list_)):
-        #print("Contains? ")
-        #print(str(list_[i][0]) + " <> " + name + " == " + str(list_[i][0] is name) + " OR " + str(list_[i][0] == name))
         if list_[i][0] == name:
             return i
     return -1
