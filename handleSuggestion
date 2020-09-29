@@ -1,0 +1,62 @@
+def handle_suggestion(matchlist=None, restaurant_name=None):
+    global tts
+
+    if restaurant_name is not None:
+        matchlist = restaurants[restaurants.restaurantname == restaurant_name]
+
+    while len(matchlist) > 0:
+        print(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
+            0, 3] + ".")
+        utterance = input().lower()
+        response = dialog_act_classifier(utterance)  # response is een act
+        if tts:
+            text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
+            0, 3] + ".")
+
+
+        if response == 'affirm':
+            print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
+                  matchlist.iloc[0, 4] + ".")
+            utterance = input().lower()
+            check_for_bye(utterance)
+
+            if tts:
+                text_to_speech(
+                    "The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
+                    matchlist.iloc[0, 4] + ".")
+
+        elif response == 'inform' or response == 'request':
+            while responseN == 'inform' or responseN == 'request':  # als de user om het adres of telefoonnummer vraagt
+                if 'adress' in utterance:
+                    print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
+                    if tts:
+                        text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
+                elif 'phone' in utterance or 'number' in utterance:
+                    print("The phone number is " + matchlist.iloc[0, 4] + ".")
+                    if tts:
+                        text_to_speech("The phone number is " + matchlist.iloc[0, 4] + ".")
+                else:
+                    print("I am sorry, I am not able to understand, here is all the available information")
+                    if tts:
+                        text_to_speech("I am sorry, I am not able to understand, here is all the available information")
+
+                    print(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant " +
+                          area_to_sentence_par(matchlist.iloc[0, 2]) + " that serves " + matchlist.iloc[0, 3] + ".")
+
+
+                    print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
+                        0, 6] + " and the phone number is " +
+                          matchlist.iloc[0, 4] + ".")
+
+                    if tts:
+                        text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
+                        0, 6] + " and the phone number is " +
+                          matchlist.iloc[0, 4] + ".")
+
+                utterance = input().lower()
+                responseN = dialog_act_classifier(utterance)
+                check_for_bye(utterance)
+
+        else:
+            matchlist = matchlist[1, :]
+    return None
