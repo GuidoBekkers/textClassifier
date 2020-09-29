@@ -42,9 +42,11 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
         matchlist = restaurants[restaurants.restaurantname == restaurant_name]
 
     while len(matchlist) > 0:
+
         print_and_text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
             0, 3] + ".")
         utterance = input().lower()
+
         response = dialog_act_classifier(utterance)  # response is een act
 
         if response == 'affirm':
@@ -54,7 +56,8 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
             check_for_bye(utterance)
 
 
-        elif response == 'inform' or response == 'request':
+        elif response == 'inform' or response == 'request': # Todo hierin terecht komen blijkt nogal moeilijk
+
             while response == 'inform' or response == 'request':  # als de user om het adres of telefoonnummer vraagt
                 if 'adress' in utterance:
                     print_and_text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
@@ -79,6 +82,8 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
 
         else:
             matchlist = matchlist.iloc[1:]
+    print_and_text_to_speech('Let me see how I can help you!')
+    check_slots()
     return None
 
 
@@ -331,16 +336,16 @@ def a_or_b(slots, restaurant_index, restaurant_names):
     if answer_a_or_b == 'b':
         print_and_text_to_speech('Which alternative would you like?')
 
-        answer_1_or_2 = int(input())
+        answer = int(input())
 
-        while answer_1_or_2 not in ['1', '2']:
-            print_and_text_to_speech('please type 1 or 2')
-
-
-            answer_1_or_2 = int(input())
+        while answer not in range(len(restaurant_names)):
+            print_and_text_to_speech(f'please type a number between 0 and {len(restaurant_names)-1}')
 
 
-        handle_suggestion(restaurant_names[answer_1_or_2])
+            answer = int(input())
+
+
+        handle_suggestion(restaurant_name=restaurant_names[answer])
 
 
 def restate():
