@@ -1,6 +1,7 @@
 import pandas as pd
 import Levenshtein as ls
 from joblib import dump, load
+from implicationLoop import implication_loop
 from gtts import gTTS
 from playsound import playsound
 
@@ -495,10 +496,8 @@ def main():
             information_loop(restaurants) # todo waarom doen we dit?
 
         elif len(matched_restaurants) == 1:
-
-            pass  # todo Handle suggestion function
+            handle_suggestion(matched_restaurants)
         elif len(matched_restaurants) > 1:
-            pass #   handle_suggestion(return_match_from_matchlist(slots))  #to_do: remove return match from matchlist function
-
+            implication_loop(matched_restaurants)
 
 main()
