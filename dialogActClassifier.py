@@ -14,4 +14,4 @@ BOW_vect = initialize_vectorizer()
 
 def dialog_act_classifier(utterance):
     vectorized_utterance = BOW_vect.transform([utterance.lower()])
-    return clf.predict(vectorized_utterance)
+    return clf.predict(vectorized_utterance)[0]

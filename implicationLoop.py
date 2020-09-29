@@ -1,6 +1,4 @@
-import implication as imp
 import pandas as pd
-import random as rd
 
 def implication_loop(matchlist: pd.DataFrame):
     imp.getConsequences(matchlist)
