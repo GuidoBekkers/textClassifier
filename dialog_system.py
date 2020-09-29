@@ -4,14 +4,18 @@ from dialogActClassifier import dialog_act_classifier
 from gtts import gTTS
 from playsound import playsound
 from implicationLoop import implication_loop
+import implication as imp
+import pandas as pd
+import random as rd
 
-def keyword_matching(sentence, slot):
+
+def keyword_matching(sentence, slot): # Todo Guido
     for w in sentence.split():
         if w in keywords[slot]:
             return w
 
 
-def pattern_matching(sentence, slot):
+def pattern_matching(sentence, slot): # Todo Guido
     max_dist = 2
     i = max_dist + 1
     res = None
@@ -45,18 +49,19 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
 
         print_and_text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
             0, 3] + ".")
+        print_and_text_to_speech('Would you like more information about this restaurant?')
         utterance = input().lower()
 
         response = dialog_act_classifier(utterance)  # response is een act
 
-        if response == 'affirm':
+        if response == 'affirm' or response == 'confirm':
             print_and_text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
                   matchlist.iloc[0, 4] + ".")
             utterance = input().lower()
             check_for_bye(utterance)
 
 
-        elif response == 'inform' or response == 'request': # Todo hierin terecht komen blijkt nogal moeilijk
+        elif response == 'inform' or response == 'request':
 
             while response == 'inform' or response == 'request':  # als de user om het adres of telefoonnummer vraagt
                 if 'adress' in utterance:
@@ -80,8 +85,10 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
                 response = dialog_act_classifier(utterance)
                 check_for_bye(utterance)
 
+        elif response == 'deny':
+            matchlist = matchlist.iloc[1:] # Todo build in a check that this is actually an negative and someone does not want this restaurant
         else:
-            matchlist = matchlist.iloc[1:]
+            print_and_text_to_speech('Sorry I did not understand to you.')
     print_and_text_to_speech('Let me see how I can help you!')
     check_slots()
     return None
@@ -96,14 +103,14 @@ def area_to_sentence_par(area):
 
 def check_for_bye(utterance):
     response = dialog_act_classifier(utterance)
-    if response == 'bye' or 'bye' in utterance:
+    if response == 'bye' or response in 'thankyou':
         print_and_text_to_speech("Bye")
         quit()
 
 
 
 def load_restaurants():
-    restaurants = pd.read_csv('restaurant_info.csv')
+    restaurants = pd.read_csv('restaurant_info4.csv')
     return restaurants
 
 
@@ -176,12 +183,10 @@ def subtract_information_and_update_slots(utterance):
 def check_slots():
     if not slots['area']:
         print_and_text_to_speech(area_questions[0])
-        area_questions.remove(area_questions[0])
 
 
     elif not slots['pricerange']:
         print_and_text_to_speech(pricerange_questions[0])
-        pricerange_questions.remove(pricerange_questions[0])
 
 
     elif not slots['food']:
@@ -202,7 +207,6 @@ def check_slots():
 
         print_and_text_to_speech(food_questions[0])
 
-        food_questions.remove(food_questions[0])
 
 def confirmation_question(slots_found):
     for s in slots_found:
@@ -366,8 +370,6 @@ def restate():
 
     slots[answer_domain] = answer_alternative
 
-possible_alternatives = {}
-
 import time
 
 def print_and_text_to_speech(string):
@@ -387,6 +389,85 @@ def print_and_text_to_speech(string):
         sound_to_play.save("{0}_text_to_speech.mp3".format(unique_name))
 
         playsound("{}_text_to_speech.mp3".format(unique_name))
+
+def implication_loop(matchlist: pd.DataFrame):
+    imp.getConsequences(matchlist)
+    # print(matchlist)
+    implication_loop_recursive(matchlist)
+
+def implication_loop_recursive(matchlist: pd.DataFrame):
+    matchlist_copy = matchlist.copy(deep=False)
+    distinguishers = findDistinguishers(matchlist)
+    print("There are multiple restaurants left.")
+
+    while len(distinguishers) > 0 and matchlist.shape[0] > 1:
+        print(getNextQuestion(matchlist.columns[distinguishers[0]]))
+        response = input().lower()
+        d_act = dialog_act_classifier(response)
+        # De kolommen waarop hij de restaurants kan onderscheiden veranderen als er restaurants verwijderd worden
+        if d_act == 'affirm':
+            matchlist = matchlist[(matchlist.iloc[:,distinguishers[0]] == True)]
+            distinguishers = findDistinguishers(matchlist)
+        #
+        # Valt "don't care" onder 'negate' of 'deny'? Als dat zo is dan:
+        # moet er nog een elif voor 'negate' komen zodat de lijst niet ingekort wordt
+        # Als het goed is wordt "doesnt matter" als 'inform' geclassificeerd.
+        #
+        elif d_act == 'negate' or d_act == 'deny':
+            matchlist = matchlist[(matchlist.iloc[:,distinguishers[0]] == False)]
+            distinguishers = findDistinguishers(matchlist)
+    hs = handle_suggestion(matchlist)
+
+    if hs is None:
+        print("There is no restaurant that satisfies all your preferences.")
+        print("Would you like to:")
+        print("a: Change your area, pricerange or foodtype")
+        print("b: Restate the other attributes")
+        ab = a_b_loop()
+        if ab == "a":
+            return None     # Hij moet naar de information loop gaan
+        elif ab == "b":
+            implication_loop_recursive(matchlist_copy)
+    else:
+        return hs
+
+def a_b_loop():
+    answer = input().lower()
+    if answer in ["a", "b"]:
+        return answer
+    else:
+        print("Please type either a or b")
+        return a_b_loop()
+
+# find the columns that can be used to distinguish between the restaurants
+def findDistinguishers(matchlist):
+    distinguishers = []
+    for i in range(7, matchlist.shape[1]):          #MOET range(7, matchlist.shape[1]) zijn!!!!!!!!!!
+        num = matchlist.iloc[:,i].value_counts().iloc[0]
+        if num != len(matchlist) and num != 0:
+            distinguishers.append(i)
+    return distinguishers
+
+def getNextQuestion(columnName: str):
+    prob = rd.randint(0, 3)
+    qclause = getQuestionClause(columnName)
+    questionoptions = ["Would you like a ", "How about a ", "Shall I recommend a ", "Do you prefer a "]
+    return questionoptions[prob] + qclause + "?"
+
+def getQuestionClause(cn: str):
+    answers = ["restaurant with ", "restaurant with a ", "restaurant with ", " ", "restaurant that takes a ",
+               " ", "restaurant with ", "restaurant that serves ", "restaurant that is fit for ", " ",
+               "restaurant that is a "]
+    options = ["pets allowed", "multi language menu", "good food", "busy", "long time", "dirty", "many tourists",
+               "spicy", "children", "romantic", "tourist trap"]
+    index = options.index(cn)
+    if index in [0, 1, 2, 4, 6, 8, 10]:
+        return answers[index] + cn
+    elif index in [3, 5, 9]:
+        return cn + " restaurant"
+    elif index in [7]:
+        return answers[index] + cn + " food"
+
 
 
 slots = {}
@@ -433,10 +514,10 @@ set_membership['food'] = {0: ['thai', 'chinese', 'korean', 'vietnamese', 'asian 
                           4: ['lebanese', 'turkish', 'persian'],
                           5: ['international', 'modern european', 'fusion']}
 
+possible_alternatives = {}
 
 
 def main():
-
     global tts, CONFIRMATION
 
     print('Welcome to our restaurant recommendation system. \n Would you like to use Text-to-Speech? [yes/no]')
@@ -466,6 +547,7 @@ def main():
         matched_restaurants = information_loop(restaurants)
 
         if len(matched_restaurants) == 0:
+            check_slots()
             handle_alternatives(slots)
             information_loop(restaurants)
 
