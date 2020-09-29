@@ -1,8 +1,6 @@
 import implication as imp
 import pandas as pd
 import random as rd
-from dialog_system import  dialog_act_classifier, handle_suggestion
-
 
 def implication_loop(matchlist: pd.DataFrame):
     imp.getConsequences(matchlist)
@@ -13,6 +11,7 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
     matchlist_copy = matchlist.copy(deep=False)
     distinguishers = findDistinguishers(matchlist)
     print("There are multiple restaurants left.")
+
     while len(distinguishers) > 0 and matchlist.shape[0] > 1:
         print(getNextQuestion(matchlist.columns[distinguishers[0]]))
         response = input().lower()
@@ -30,6 +29,7 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
             matchlist = matchlist[(matchlist.iloc[:,distinguishers[0]] == False)]
             distinguishers = findDistinguishers(matchlist)
     hs = handle_suggestion(matchlist)
+
     if hs is None:
         print("There is no restaurant that satisfies all your preferences.")
         print("Would you like to:")

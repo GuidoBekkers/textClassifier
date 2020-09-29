@@ -1,18 +1,9 @@
 import pandas as pd
 import Levenshtein as ls
-from joblib import dump, load
-from implicationLoop import implication_loop
+from dialogActClassifier import dialog_act_classifier
 from gtts import gTTS
 from playsound import playsound
-
-
-def initialize_classifier():
-    return load('SVM.joblib')
-
-
-def initialize_vectorizer():
-    return load('BOW_vect.joblib')
-
+from implicationLoop import implication_loop
 
 def keyword_matching(sentence, slot):
     for w in sentence.split():
@@ -36,6 +27,14 @@ def pattern_matching(sentence, slot):
                     res = value
             return res
 
+
+def return_match_from_matchlist(slots):  # Remove this function entirely
+    matchlist = lookup(slots["area"], slots["food"], slots["pricerange"])
+    if len(matchlist) == 0:
+        print("Apologies, no restaurant that serves " + slots["food"] + " was found.")
+        return None
+    else:
+        return matchlist
 
 def handle_suggestion(matchlist=None, restaurant_name=None):
     global tts
@@ -65,7 +64,7 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
                     matchlist.iloc[0, 4] + ".")
 
         elif response == 'inform' or response == 'request':
-            while responseN == 'inform' or responseN == 'request':  # als de user om het adres of telefoonnummer vraagt
+            while response == 'inform' or response == 'request':  # als de user om het adres of telefoonnummer vraagt
                 if 'adress' in utterance:
                     print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
                     if tts:
@@ -93,21 +92,12 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
                           matchlist.iloc[0, 4] + ".")
 
                 utterance = input().lower()
-                responseN = clf.predict(BOW_vect.transform(utterance))
+                response = dialog_act_classifier(utterance)
                 check_for_bye(utterance)
 
         else:
-            matchlist = matchlist[1, :]
+            matchlist = matchlist.iloc[1:]
     return None
-
-
-def return_match_from_matchlist(slots):  # Remove this function entirely
-    matchlist = lookup(slots["area"], slots["food"], slots["pricerange"])
-    if len(matchlist) == 0:
-        print("Apologies, no restaurant that serves " + slots["food"] + " was found.")
-        return None
-    else:
-        return matchlist
 
 
 def area_to_sentence_par(area):
@@ -118,7 +108,7 @@ def area_to_sentence_par(area):
 
 
 def check_for_bye(utterance):
-    response = clf.predict(BOW_vect.transform(utterance))
+    response = dialog_act_classifier(utterance)
     if response == 'bye':
         return "finished"
         quit()
@@ -149,9 +139,6 @@ def lookup(restaurants, area=None, food=None, pricerange=None):
     return restaurants
 
 
-def dialog_act_classifier(utterance):
-    vectorized_utterance = BOW_vect.transform([utterance.lower()])
-    return clf.predict(vectorized_utterance)
 
 
 def information_loop(restaurants):
@@ -174,22 +161,11 @@ def information_loop(restaurants):
 
 
 def subtract_information_and_update_slots(utterance):
-    # use keywords to obtain domain and new information
-
-    # utterance = utterance.split()
-
-    # domain = utterance[0]
-
-    # new_information_about_domain = utterance[1:]
 
     for key in filter(lambda x: slots[x] is None, slots):
         slots[key] = keyword_matching(utterance, key)
         if slots[key] is None:
             slots[key] = pattern_matching(utterance, key)
-
-    # if domain in slots.keys():
-
-    # slots[domain] = new_information_about_domain
 
 
 def check_slots():
@@ -247,8 +223,7 @@ food_questions = ['Do you have any specific preferences regarding the type of fo
                   'Could you state what food you want?']
 
 restaurants = load_restaurants()
-clf = initialize_classifier()
-BOW_vect = initialize_vectorizer()
+
 
 keywords = {'food': list(dict.fromkeys(list(restaurants.food))),
             'area': ['west', 'north', 'south', 'centre', 'east'],
@@ -401,7 +376,7 @@ def a_or_b(slots, restaurant_index, restaurant_names):
 
     answer_a_or_b = input()
 
-    if answer_a_or_b not in ['a', 'b']:
+    while answer_a_or_b not in ['a', 'b']:
         print('please type a or b')
         if tts:
             text_to_speech('please type a or b')
@@ -417,15 +392,17 @@ def a_or_b(slots, restaurant_index, restaurant_names):
         if tts:
             text_to_speech('Which alternative would you like?')
 
-        answer_index = int(input())
+        answer_1_or_2 = int(input())
 
-        #slots['area'] = restaurant_index[answer_index]['area']
-        #slots['food'] = restaurant_index[answer_index]['food']
-        #slots['pricerange'] = restaurant_index[answer_index]['pricerange']
+        while answer_1_or_2 not in ['1', '2']:
+            print('please type 1 or 2')
+            if tts:
+                text_to_speech('please type 1 or 2')
 
-        #return slots
+            answer_1_or_2 = int(input())
 
-        handle_suggestion(restaurant_names[answer_index])
+
+        handle_suggestion(restaurant_names[answer_1_or_2])
 
 
 def restate():
@@ -471,7 +448,7 @@ def main():
     global tts
 
 
-    print('Welcome to our restaurant recommendation system. \n Would you like to use Text-to-Speech?')
+    print('Welcome to our restaurant recommendation system. \n Would you like to use Text-to-Speech? [yes/no]')
 
     tts_answer = dialog_act_classifier(input())
     if tts_answer == 'affirm':
@@ -497,6 +474,7 @@ def main():
 
         elif len(matched_restaurants) == 1:
             handle_suggestion(matched_restaurants)
+
         elif len(matched_restaurants) > 1:
             implication_loop(matched_restaurants)
 
