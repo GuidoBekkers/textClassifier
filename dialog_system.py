@@ -31,65 +31,47 @@ def pattern_matching(sentence, slot):
 def return_match_from_matchlist(slots):  # Remove this function entirely
     matchlist = lookup(slots["area"], slots["food"], slots["pricerange"])
     if len(matchlist) == 0:
-        print("Apologies, no restaurant that serves " + slots["food"] + " was found.")
+        print_and_text_to_speech("Apologies, no restaurant that serves " + slots["food"] + " was found.")
         return None
     else:
         return matchlist
 
 def handle_suggestion(matchlist=None, restaurant_name=None):
-    global tts
 
     if restaurant_name is not None:
         matchlist = restaurants[restaurants.restaurantname == restaurant_name]
 
     while len(matchlist) > 0:
-        print(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
+        print_and_text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
             0, 3] + ".")
         utterance = input().lower()
         response = dialog_act_classifier(utterance)  # response is een act
-        if tts:
-            text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
-            0, 3] + ".")
-
 
         if response == 'affirm':
-            print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
+            print_and_text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
                   matchlist.iloc[0, 4] + ".")
             utterance = input().lower()
             check_for_bye(utterance)
 
-            if tts:
-                text_to_speech(
-                    "The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
-                    matchlist.iloc[0, 4] + ".")
 
         elif response == 'inform' or response == 'request':
             while response == 'inform' or response == 'request':  # als de user om het adres of telefoonnummer vraagt
                 if 'adress' in utterance:
-                    print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
-                    if tts:
-                        text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
-                elif 'phone' in utterance or 'number' in utterance:
-                    print("The phone number is " + matchlist.iloc[0, 4] + ".")
-                    if tts:
-                        text_to_speech("The phone number is " + matchlist.iloc[0, 4] + ".")
-                else:
-                    print("I am sorry, I am not able to understand, here is all the available information")
-                    if tts:
-                        text_to_speech("I am sorry, I am not able to understand, here is all the available information")
+                    print_and_text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
 
-                    print(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant " +
+                elif 'phone' in utterance or 'number' in utterance:
+                    print_and_text_to_speech("The phone number is " + matchlist.iloc[0, 4] + ".")
+
+                else:
+                    print_and_text_to_speech("I am sorry, I am not able to understand, here is all the available information")
+
+                    print_and_text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant " +
                           area_to_sentence_par(matchlist.iloc[0, 2]) + " that serves " + matchlist.iloc[0, 3] + ".")
 
-
-                    print("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
+                    print_and_text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
                         0, 6] + " and the phone number is " +
                           matchlist.iloc[0, 4] + ".")
 
-                    if tts:
-                        text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
-                        0, 6] + " and the phone number is " +
-                          matchlist.iloc[0, 4] + ".")
 
                 utterance = input().lower()
                 response = dialog_act_classifier(utterance)
@@ -142,21 +124,36 @@ def lookup(restaurants, area=None, food=None, pricerange=None):
 
 
 def information_loop(restaurants):
+    first_sentence = True
+    slots_found = []
     matched_restaurants = restaurants
     while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
 
         utterance = input().lower()
 
-        if dialog_act_classifier(utterance) == 'inform':
-            subtract_information_and_update_slots(utterance)
+        if first_sentence is False:
+            if 'any' in utterance or 'do not care' in utterance:
+                for s in slots:
+                    if slots[s] is None:
+                        slots[s] = 'any'
+                        slots_found.append(s)
+                        break
+        if CONFIRMATION:
+            if dialog_act_classifier(utterance) == 'inform':
+                slots_found += subtract_information_and_update_slots(utterance)
+
+        confirmation_question(slots_found)
+        print(slots_found)
+        slots_found = []
+
+        matched_restaurants = lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
 
         if len(matched_restaurants) > 1:
             check_slots()
         elif len(matched_restaurants) < 2:
             break
 
-        matched_restaurants = lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
-
+        first_sentence = False
     return matched_restaurants
 
 
@@ -170,31 +167,24 @@ def subtract_information_and_update_slots(utterance):
 
 def check_slots():
     if not slots['area']:
-        # Code could be used in order to have multiple questions
-        print(area_questions[0])
-        area_questions.remove(area_questions[0])
-        if tts:
-            text_to_speech(area_questions[0])
+        print_and_text_to_speech(area_questions[0])
         area_questions.remove(area_questions[0])
 
+
     elif not slots['pricerange']:
-        print(pricerange_questions[0])
+        print_and_text_to_speech(pricerange_questions[0])
         pricerange_questions.remove(pricerange_questions[0])
-        if tts:
-            text_to_speech(pricerange_questions[0])
-        pricerange_questions.remove(pricerange_questions[0])
+
 
     elif not slots['food']:
 
         if not food_questions:
-            print('Unfortunately, there are no options for that type of food. \nwould you like to restate your food preference?')
-            if tts:
-                text_to_speech('Unfortunately, there are no options for that type of food. \nwould you like to restate your food preference?')
+            print_and_text_to_speech('Unfortunately, there are no options for that type of food. \nwould you like to restate your food preference?')
+
             answer = dialog_act_classifier(input())
             if answer == 'affirm':
-                print('What kind of food would you like instead?')
-                if tts:
-                    text_to_speech('What kind of food would you like instead?')
+                print_and_text_to_speech('What kind of food would you like instead?')
+
 
                 answer_alternative = input().lower()
 
@@ -202,63 +192,29 @@ def check_slots():
 
             return
 
-        print(food_questions[0])
-        if tts:
-            text_to_speech(food_questions[0])
+        print_and_text_to_speech(food_questions[0])
+
         food_questions.remove(food_questions[0])
 
-
-slots = {}
-questions = {}
-
-slots['area'] = None
-slots['pricerange'] = None
-slots['food'] = None
-
-area_questions = ['Which area would you like to dine in?',
-                  'Could you give a specific area?']  # Questions could be in a list to have multiple questions
-pricerange_questions = ['What pricerange were you thinking of?',
-                        'Could you specify cheap, expensive or moderately priced?']
-food_questions = ['Do you have any specific preferences regarding the type of food?',
-                  'Could you state what food you want?']
-
-restaurants = load_restaurants()
-
-
-keywords = {'food': list(dict.fromkeys(list(restaurants.food))),
-            'area': ['west', 'north', 'south', 'centre', 'east'],
-            'pricerange': ['cheap', 'moderate', 'expensive'],
-            'type': ['restaurant', 'bar', 'brasserie']
-            }
-patterns = {'food': ['food'],
-            'area': ['part' 'area'],
-            'pricerange': ['priced', 'price'],
-            'type': []
-            }
-
-set_membership = {}
-set_membership['pricerange'] = {0: ['cheap', 'moderate'],
-                                1: ['moderate', 'expensive']}
-set_membership['area'] = {0: ['centre', 'north', 'west'],
-                          1: ['centre', 'north', 'east'],
-                          2: ['centre', 'south', 'west'],
-                          3: ['centre', 'south', 'east']}
-set_membership['food'] = {0: ['thai', 'chinese', 'korean', 'vietnamese', 'asian oriental'],
-                          1: ['mediterranean', 'spanish', 'portuguese', 'italian', 'romanian', 'tuscan', 'catalan'],
-                          2: ['french', 'european', 'bistro', 'swiss', 'gastropub', 'traditional'],
-                          3: ['north american', 'steakhouse', 'british'],
-                          4: ['lebanese', 'turkish', 'persian'],
-                          5: ['international', 'modern european', 'fusion']}
+def confirmation_question(slots_found):
+    for s in slots_found:
+        if s == 'food':
+            print('You are looking for {} food, correct?'.format(slots[s]))
+        if s == 'pricerange':
+            print('You prefer the price to be {}, correct?'.format(slots[s]))
+        if s == 'area':
+            print('So you want to eat in {} area of town?'.format(slots[s]))
+        answer = input()
+        if dialog_act_classifier(answer) != 'affirm':  # als de reactie geen bevestiging is, wordt het slot gereset
+            slots[s] = None
 
 
 
 
 def member_alternative(domain, preference):
-    global tts
     if preference == None:
-        print('Can not find alternatives for type None for: ' + domain)
-        if tts:
-            text_to_speech('Can not find alternatives for type None for: ' + domain)
+        print_and_text_to_speech('Can not find alternatives for type None for: ' + domain)
+
         return
 
     domain = domain.lower()
@@ -316,7 +272,6 @@ def search_alternatives(slots):
 
 
 def handle_alternatives(slots):
-    global tts
     number_of_alternatives = len(search_alternatives(slots)['area']) + len(search_alternatives(slots)['food']) + len(
         search_alternatives(slots)['pricerange'])
     restaurant_index = []
@@ -324,10 +279,8 @@ def handle_alternatives(slots):
     restaurant_counter = 0
 
     if number_of_alternatives > 1:
-        print('Unfortunately, there are no restaurants found. \nThe following alternatives are available:')
+        print_and_text_to_speech('Unfortunately, there are no restaurants found. \nThe following alternatives are available:')
 
-        if tts:
-            text_to_speech('Unfortunately, there are no restaurants found. \nThe following alternatives are available:')
 
         for domain in ['area', 'food', 'pricerange']:
             if not len(search_alternatives(slots)[domain]) == 0:
@@ -341,26 +294,18 @@ def handle_alternatives(slots):
                     search_alternatives(slots)[domain][option][0]
                     restaurant_names[restaurant_counter] = search_alternatives(slots)[domain][option][
                         0]
-                    print(str(restaurant_counter) + ' : ' + search_alternatives(slots)[domain][option][
+                    print_and_text_to_speech(str(restaurant_counter) + ' : ' + search_alternatives(slots)[domain][option][
                         0] + ' is a restaurant in the ' + search_alternatives(slots)[domain][option][
                               2] + ' part of town that serves ' + search_alternatives(slots)[domain][option][
                               3] + ' in the pricerange of ' + search_alternatives(slots)[domain][option][1])
 
-                    if tts:
-                        text_to_speech(str(restaurant_counter) + ' : ' + search_alternatives(slots)[domain][option][
-                        0] + ' is a restaurant in the ' + search_alternatives(slots)[domain][option][
-                              2] + ' part of town that serves ' + search_alternatives(slots)[domain][option][
-                              3] + ' in the pricerange of ' + search_alternatives(slots)[domain][option][1])
 
                     restaurant_counter += 1
 
         a_or_b(slots, restaurant_index, restaurant_names)
 
     else:
-        print('There are no alternatives, would you like to change your preferences?')
-
-        if tts:
-            text_to_speech('There are no alternatives, would you like to change your preferences?')
+        print_and_text_to_speech('There are no alternatives, would you like to change your preferences?')
 
         response = dialog_act_classifier(input())
         if response == 'affirm':
@@ -368,18 +313,12 @@ def handle_alternatives(slots):
 
 
 def a_or_b(slots, restaurant_index, restaurant_names):
-    global tts
-    print('Would you like to: \n a: restate your preferences \n b: Choose one of these alternatives')
-
-    if tts:
-        text_to_speech('Would you like to:. \n a: restate your preferences. \n b: Choose one of these alternatives')
+    print_and_text_to_speech('Would you like to: \n a: restate your preferences \n b: Choose one of these alternatives')
 
     answer_a_or_b = input()
 
     while answer_a_or_b not in ['a', 'b']:
-        print('please type a or b')
-        if tts:
-            text_to_speech('please type a or b')
+        print_and_text_to_speech('please type a or b')
 
         answer_a_or_b = input()
 
@@ -387,17 +326,13 @@ def a_or_b(slots, restaurant_index, restaurant_names):
         restate()
 
     if answer_a_or_b == 'b':
-        print('Which alternative would you like?')
-
-        if tts:
-            text_to_speech('Which alternative would you like?')
+        print_and_text_to_speech('Which alternative would you like?')
 
         answer_1_or_2 = int(input())
 
         while answer_1_or_2 not in ['1', '2']:
-            print('please type 1 or 2')
-            if tts:
-                text_to_speech('please type 1 or 2')
+            print_and_text_to_speech('please type 1 or 2')
+
 
             answer_1_or_2 = int(input())
 
@@ -406,23 +341,18 @@ def a_or_b(slots, restaurant_index, restaurant_names):
 
 
 def restate():
-    global tts
-    print('which domain would you like to change?')
+    print_and_text_to_speech('which domain would you like to change?')
 
-    if tts:
-        text_to_speech('Which domain would you like to change?')
 
     answer_domain = input().lower()
 
     if answer_domain not in ['area', 'food', 'pricerange']:
-        print('Please select area, food or pricerange.')
-        if tts:
-            text_to_speech('Please select area, food or pricerange')
+        print_and_text_to_speech('Please select area, food or pricerange.')
+        answer_domain = input().lower()
 
-    print('What alternative would you like?')
 
-    if tts:
-        text_to_speech('What alternative would you like?')
+    print_and_text_to_speech('What alternative would you like?')
+
 
     answer_alternative = input().lower()
 
@@ -430,23 +360,70 @@ def restate():
 
 possible_alternatives = {}
 
-def text_to_speech(string):
+def print_and_text_to_speech(string):
 
-    mytext = string
+    global tts
 
-    language = 'en'
+    print(string)
 
-    myobj = gTTS(text=mytext, lang=language, slow=False)
+    if tts:
 
-    myobj.save("welcome.mp3")
+        language = 'en'
 
-    playsound('welcome.mp3')
+        sound_to_play = gTTS(text=string, lang=language, slow=False)
+
+        sound_to_play.save("text_to_speech.mp3")
+
+        playsound('text_to_speech.mp3')
+
+
+slots = {}
+questions = {}
+
+slots['area'] = None
+slots['pricerange'] = None
+slots['food'] = None
+
+area_questions = ['Which area would you like to dine in?',
+                  'Could you give a specific area?']  # Questions could be in a list to have multiple questions
+pricerange_questions = ['What pricerange were you thinking of?',
+                        'Could you specify cheap, expensive or moderately priced?']
+food_questions = ['Do you have any specific preferences regarding the type of food?',
+                  'Could you state what food you want?']
+
+restaurants = load_restaurants()
+
+
+keywords = {'food': list(dict.fromkeys(list(restaurants.food))),
+            'area': ['west', 'north', 'south', 'centre', 'east'],
+            'pricerange': ['cheap', 'moderate', 'expensive'],
+            'type': ['restaurant', 'bar', 'brasserie']
+            }
+patterns = {'food': ['food'],
+            'area': ['part' 'area'],
+            'pricerange': ['priced', 'price'],
+            'type': []
+            }
+
+set_membership = {}
+set_membership['pricerange'] = {0: ['cheap', 'moderate'],
+                                1: ['moderate', 'expensive']}
+set_membership['area'] = {0: ['centre', 'north', 'west'],
+                          1: ['centre', 'north', 'east'],
+                          2: ['centre', 'south', 'west'],
+                          3: ['centre', 'south', 'east']}
+set_membership['food'] = {0: ['thai', 'chinese', 'korean', 'vietnamese', 'asian oriental'],
+                          1: ['mediterranean', 'spanish', 'portuguese', 'italian', 'romanian', 'tuscan', 'catalan'],
+                          2: ['french', 'european', 'bistro', 'swiss', 'gastropub', 'traditional'],
+                          3: ['north american', 'steakhouse', 'british'],
+                          4: ['lebanese', 'turkish', 'persian'],
+                          5: ['international', 'modern european', 'fusion']}
+
 
 
 def main():
 
-    global tts
-
+    global tts, CONFIRMATION
 
     print('Welcome to our restaurant recommendation system. \n Would you like to use Text-to-Speech? [yes/no]')
 
@@ -457,11 +434,17 @@ def main():
     else:
         tts = False
 
+    print_and_text_to_speech('Would you want confirmation for your preferences turned on? [yes/no]')
+    confirmation_answer = dialog_act_classifier(input())
 
-    print('What kind of restaurant are you looking for?')
+    if confirmation_answer == 'affirm':
+        CONFIRMATION = True
 
-    if tts:
-        text_to_speech('What kind of restaurant are you looking for?')
+    else:
+        CONFIRMATION = False
+
+    print_and_text_to_speech('What kind of restaurant are you looking for?')
+
 
 
     while True:
