@@ -384,9 +384,9 @@ def print_and_text_to_speech(string):
 
         unique_name = time.time()
 
-        sound_to_play.save("{0}_text_to_speech.mp3".format(unique_name))
+        sound_to_play.save("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
 
-        playsound("{}_text_to_speech.mp3".format(unique_name))
+        playsound("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
 
 def implication_loop(matchlist: pd.DataFrame):
     imp.getConsequences(matchlist)
