@@ -145,7 +145,7 @@ def information_loop(restaurants):
 
         if CONFIRMATION:
             if dialog_act_classifier(utterance) == 'inform':
-                slots_found = [slot for slot in slots if slots[slot] is not None]
+                slots_found = [slot for slot in slots if slots[slot] is not None][:-1]
                 confirmation_question(slots_found)
                 slots_found = []
 
