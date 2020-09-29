@@ -1,3 +1,5 @@
+import pandas as pd
+
 def implication_loop(matchlist: pd.DataFrame):
     imp.getConsequences(matchlist)
     # print(matchlist)
