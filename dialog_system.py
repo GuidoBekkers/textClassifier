@@ -91,9 +91,10 @@ def area_to_sentence_par(area):
 
 def check_for_bye(utterance):
     response = dialog_act_classifier(utterance)
-    if response == 'bye':
-        return "finished"
+    if response == 'bye' or 'bye' in utterance:
+        print_and_text_to_speech("Bye")
         quit()
+
 
 
 def load_restaurants():
@@ -126,10 +127,13 @@ def lookup(restaurants, area=None, food=None, pricerange=None):
 def information_loop(restaurants):
     first_sentence = True
     slots_found = []
+
     matched_restaurants = restaurants
     while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
 
         utterance = input().lower()
+
+        subtract_information_and_update_slots(utterance)
 
         if first_sentence is False:
             if 'any' in utterance or 'do not care' in utterance:
@@ -138,13 +142,12 @@ def information_loop(restaurants):
                         slots[s] = 'any'
                         slots_found.append(s)
                         break
+
         if CONFIRMATION:
             if dialog_act_classifier(utterance) == 'inform':
-                slots_found += subtract_information_and_update_slots(utterance)
-
-        confirmation_question(slots_found)
-        print(slots_found)
-        slots_found = []
+                slots_found = [slot for slot in slots if slots[slot] is not None]
+                confirmation_question(slots_found)
+                slots_found = []
 
         matched_restaurants = lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
 
@@ -200,9 +203,9 @@ def confirmation_question(slots_found):
     for s in slots_found:
         if s == 'food':
             print('You are looking for {} food, correct?'.format(slots[s]))
-        if s == 'pricerange':
+        elif s == 'pricerange':
             print('You prefer the price to be {}, correct?'.format(slots[s]))
-        if s == 'area':
+        elif s == 'area':
             print('So you want to eat in {} area of town?'.format(slots[s]))
         answer = input()
         if dialog_act_classifier(answer) != 'affirm':  # als de reactie geen bevestiging is, wordt het slot gereset
@@ -360,6 +363,8 @@ def restate():
 
 possible_alternatives = {}
 
+import time
+
 def print_and_text_to_speech(string):
 
     global tts
@@ -372,9 +377,11 @@ def print_and_text_to_speech(string):
 
         sound_to_play = gTTS(text=string, lang=language, slow=False)
 
-        sound_to_play.save("text_to_speech.mp3")
+        unique_name = time.time()
 
-        playsound('text_to_speech.mp3')
+        sound_to_play.save("{0}_text_to_speech.mp3".format(unique_name))
+
+        playsound("{}_text_to_speech.mp3".format(unique_name))
 
 
 slots = {}
@@ -408,10 +415,12 @@ patterns = {'food': ['food'],
 set_membership = {}
 set_membership['pricerange'] = {0: ['cheap', 'moderate'],
                                 1: ['moderate', 'expensive']}
+
 set_membership['area'] = {0: ['centre', 'north', 'west'],
                           1: ['centre', 'north', 'east'],
                           2: ['centre', 'south', 'west'],
                           3: ['centre', 'south', 'east']}
+
 set_membership['food'] = {0: ['thai', 'chinese', 'korean', 'vietnamese', 'asian oriental'],
                           1: ['mediterranean', 'spanish', 'portuguese', 'italian', 'romanian', 'tuscan', 'catalan'],
                           2: ['french', 'european', 'bistro', 'swiss', 'gastropub', 'traditional'],
@@ -453,7 +462,7 @@ def main():
 
         if len(matched_restaurants) == 0:
             handle_alternatives(slots)
-            information_loop(restaurants) # todo waarom doen we dit?
+            information_loop(restaurants)
 
         elif len(matched_restaurants) == 1:
             handle_suggestion(matched_restaurants)
