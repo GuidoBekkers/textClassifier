@@ -95,6 +95,15 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
 
 
 def area_to_sentence_par(area):
+    """Creates a clause to describe the area
+    Parameters
+    ----------
+    area : str
+        the area that describes the part of town
+    Returns
+    -------
+    It returns "centre of town" or area (south, north, east, west) + " part of town"
+    """
     if area == "centre":
         return "centre of town"
     else:
@@ -102,11 +111,19 @@ def area_to_sentence_par(area):
 
 
 def check_for_bye(utterance):
+    """Checks if the user has said "bye" yet and closes down in case the user has
+    Parameters
+    ----------
+    utterance : str
+        the input of the user
+    Returns
+    -------
+    None
+    """
     response = dialog_act_classifier(utterance)
     if response == 'bye' or response in 'thankyou':
         print_and_text_to_speech("Bye")
         quit()
-
 
 
 def load_restaurants():
@@ -479,38 +496,51 @@ def print_and_text_to_speech(string):
         playsound("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
 
 def implication_loop(matchlist: pd.DataFrame):
+    """Takes a pandas dataframe and updates it by reasoning about each restaurant, then it uses the updated dataframe
+    to further rule out restaurants and find one that satisfies all the user's wishes
+    Parameters
+    ----------
+    matchlist : pandas dataframe
+        a dataframe with all the selected restaurants
+    Returns
+    -------
+    None
+    """
     imp.getConsequences(matchlist)
-    # print(matchlist)
     implication_loop_recursive(matchlist)
 
+
 def implication_loop_recursive(matchlist: pd.DataFrame):
+    """Takes a updated pandas dataframe (with the new columns in the dataframe) and asks the user questions about
+    the other features that can set the restaurants apart. (If all the restaurants serve good food it will not ask
+    the user about good food, since it is pointless to ask)
+    Parameters
+    ----------
+    matchlist : pandas DataFrame
+        a dataframe with all the selected restaurants
+    Returns
+    -------
+    The outcome of handle_suggestion
+    """
     matchlist_copy = matchlist.copy(deep=False)
     distinguishers = findDistinguishers(matchlist)
-    print("There are multiple restaurants left.")
+    print_and_text_to_speech("There are multiple restaurants left.")
 
     while len(distinguishers) > 0 and matchlist.shape[0] > 1:
-        print(getNextQuestion(matchlist.columns[distinguishers[0]]))
+        print_and_text_to_speech(getNextQuestion(matchlist.columns[distinguishers[0]]))
         response = input().lower()
         d_act = dialog_act_classifier(response)
-        # De kolommen waarop hij de restaurants kan onderscheiden veranderen als er restaurants verwijderd worden
         if d_act == 'affirm':
             matchlist = matchlist[(matchlist.iloc[:,distinguishers[0]] == True)]
             distinguishers = findDistinguishers(matchlist)
-        #
-        # Valt "don't care" onder 'negate' of 'deny'? Als dat zo is dan:
-        # moet er nog een elif voor 'negate' komen zodat de lijst niet ingekort wordt
-        # Als het goed is wordt "doesnt matter" als 'inform' geclassificeerd.
-        #
         elif d_act == 'negate' or d_act == 'deny':
             matchlist = matchlist[(matchlist.iloc[:,distinguishers[0]] == False)]
             distinguishers = findDistinguishers(matchlist)
     hs = handle_suggestion(matchlist)
 
     if hs is None:
-        print("There is no restaurant that satisfies all your preferences.")
-        print("Would you like to:")
-        print("a: Change your area, pricerange or foodtype")
-        print("b: Restate the other attributes")
+        print_and_text_to_speech("There is no restaurant that satisfies all your preferences.\nWould you like to:\n"
+                                 + "a: Change your area, pricerange or foodtype\nb: Restate the other attributes")
         ab = a_b_loop()
         if ab == "a":
             return None     # Hij moet naar de information loop gaan
@@ -519,30 +549,70 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
     else:
         return hs
 
+
 def a_b_loop():
+    """The input is checked and only returns if the user types "a" or "b", otherwise the user is told to choose either
+    a or b
+    Parameters
+    ----------
+    None
+    Returns
+    -------
+    The answer of the user ("a" or "b")
+    """
     answer = input().lower()
     if answer in ["a", "b"]:
         return answer
     else:
-        print("Please type either a or b")
+        print_and_text_to_speech("Please type either a or b")
         return a_b_loop()
 
-# find the columns that can be used to distinguish between the restaurants
+
 def findDistinguishers(matchlist):
+    """The columns, which the system has not asked about, which can distinguish the different restaurants present in
+    the matchlist
+    Parameters
+    ----------
+    matchlist : pandas dataframe
+        a dataframe with restaurants filtered based on the 'slots'
+    Returns
+    -------
+    It returns a list with the indexes of the columns that can be used to distinguish the restaurants in matchlist
+    """
     distinguishers = []
-    for i in range(7, matchlist.shape[1]):          #MOET range(7, matchlist.shape[1]) zijn!!!!!!!!!!
+    for i in range(7, matchlist.shape[1]):
         num = matchlist.iloc[:,i].value_counts().iloc[0]
         if num != len(matchlist) and num != 0:
             distinguishers.append(i)
     return distinguishers
 
+
 def getNextQuestion(columnName: str):
+    """Creates a new question (yes-no question) based on the name of a column
+    Parameters
+    ----------
+    columnName : str
+        the name of one of the columns (that the system has not yet asked questions about)
+    Returns
+    -------
+    It returns a string with the question that the system should ask next
+    """
     prob = rd.randint(0, 3)
     qclause = getQuestionClause(columnName)
     questionoptions = ["Would you like a ", "How about a ", "Shall I recommend a ", "Do you prefer a "]
     return questionoptions[prob] + qclause + "?"
 
+
 def getQuestionClause(cn: str):
+    """Creates a new question clause based on the name of a column
+    Parameters
+    ----------
+    cn : str
+        the name of one of the columns
+    Returns
+    -------
+    It returns a string with the (subject) clause that describes the restaurant
+    """
     answers = ["restaurant with ", "restaurant with a ", "restaurant with ", " ", "restaurant that takes a ",
                " ", "restaurant with ", "restaurant that serves ", "restaurant that is fit for ", " ",
                "restaurant that is a "]
@@ -555,8 +625,6 @@ def getQuestionClause(cn: str):
         return cn + " restaurant"
     elif index in [7]:
         return answers[index] + cn + " food"
-
-
 
 slots = {}
 questions = {}
