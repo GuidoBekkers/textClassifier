@@ -154,12 +154,10 @@ def lookup(restaurants, area=None, food=None, pricerange=None):
 
 def information_loop(restaurants):
     """Function that loops until all the slots have been filled
-
     Parameters
     ----------
     restaurants : pandas DataFrame
         this df contains all the restaurants in the csv file
-
     Returns
     -------
     matched_restaurants : pandas DataFrame
@@ -211,11 +209,9 @@ def subtract_information_and_update_slots(utterance):
 
 def check_slots():
     """Function checks if a slot is filled or not. If not, prints a question to fill slot.
-
     Parameters
     ----------
     None
-
     Returns
     -------
     None if user doesn't want to restate preferences if a certain type of food is not possible
@@ -260,14 +256,12 @@ def confirmation_question(slots_found):
 
 def member_alternative(domain, preference):
     """Function used to check which members in the set membership can be used to search for alternatives (example: thai and chinese can be swapped)
-
     Parameters
     ----------
     domain : str
         either 'area', 'food' or 'pricerange'
     preference : str
         contains the preference for a given domain (example: domain = 'area', preference = 'north')
-
     Returns
     -------
     None if no preference is present for a given domain
@@ -276,7 +270,7 @@ def member_alternative(domain, preference):
     """
 
     if preference == None: # if no preference is found, the system needs to check first whether there is a preference for that domain
-        print_and_text_to_speech('Can not find alternatives for type None for: ' + domain)
+        #print_and_text_to_speech('Can not find alternatives for type None for: ' + domain)
         return
 
     domain = domain.lower()
@@ -292,18 +286,17 @@ def member_alternative(domain, preference):
                 if set_membership[domain][x][y] not in updated_members: # checks whether a certain preference isn't already in the possible members list
                     updated_members.append(set_membership[domain][x][y])
 
-    updated_members.remove(preference) # removes the current preference, since this has been added as part of the members, but plays no role in the alternatives
+    if preference in updated_members:
+        updated_members.remove(preference) # removes the current preference, since this has been added as part of the members, but plays no role in the alternatives
     return updated_members
 
 
 def search_alternatives(slots):
     """Searches for alternatives in the csv file using the possible members from member_alternative
-
     Parameters
     ----------
     slots : dict
         slots is the dictionary that holds the knowledge regarding the preferences per domain
-
     Returns
     -------
     None if no member_alternatives can be found, possibly because of an empty slot
@@ -317,12 +310,16 @@ def search_alternatives(slots):
     possible_restaurants_dict['pricerange'] = []
 
     for domain in ['area', 'food', 'pricerange']:
-        try:
-            alternatives_for_domain = member_alternative(domain, slots[domain]) # checks alternatives based on set membership
 
-        except TypeError:
-            raise Exception('Can not find alternative for NoneType')
-            return
+        if member_alternative(domain, slots[domain]) == None:
+            break
+
+        alternatives_for_domain = member_alternative(domain, slots[domain]) # checks alternatives based on set membership
+
+
+        #except TypeError:
+         #   raise Exception('Can not find alternative for NoneType')
+          #  return
 
         temp_slots = slots.copy() # to use the slots, but to not change them, a copy is made to check for alternatives
         temp_slots[domain] = [] # for storing more than one alternatives, a list is made per domain
@@ -340,9 +337,9 @@ def search_alternatives(slots):
             elif len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) > 1:
                 # if more than one alternative is found, a loop goes over the possible restaurants and adds them to the possible_restaurants_dict
 
-                for restaurant in range(len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']))):
+                for rest in range(len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']))):
                     restaurant = lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
-                        restaurant]
+                        rest]
                     possible_restaurants_dict[domain].append([restaurant[0], restaurant[1], restaurant[2], restaurant[3]])
 
     return possible_restaurants_dict
@@ -350,12 +347,10 @@ def search_alternatives(slots):
 
 def handle_alternatives(slots):
     """Main function for organizing the process of choosing an alternative when no restaurant match is found
-
     Parameters
     ----------
     slots : dict
         slots is the dictionary that holds the knowledge regarding the preferences per domain
-
     Returns
     -------
     Doesn't return anything, but calls a_or_b if there are several options, or asks if the user wants to restate preferences when no alternatives are possible
@@ -398,15 +393,21 @@ def handle_alternatives(slots):
         if response == 'affirm':
             restate()
 
+        else:
+            print_and_text_to_speech('Then I am afraid that I can not help you')
+
+            response = input().lower()
+            check_for_bye(response)
+
+
+
 
 def a_or_b(restaurant_names):
     """Function for handling restating preferences (a) or choosing alternatives (b) when no restaurant match is found
-
     Parameters
     ----------
     restaurant_names : dict
         dictionary that contains the restaurant names in order to suggest them whenever alternative is chosen
-
     Returns
     -------
     Doesn't return anything, but either calls restate() if a, or
@@ -437,15 +438,12 @@ def a_or_b(restaurant_names):
 
 def restate():
     """Function can be used whenever the option is chosen to restate the preferences.
-
     Parameters
     ----------
     None
-
     Returns
     -------
     Doesn't return anything, but asks the user which domain and preference are desired to be changed
-
     """
     print_and_text_to_speech('which domain would you like to change?')
 
@@ -467,16 +465,13 @@ def restate():
 
 def print_and_text_to_speech(string):
     """Takes a string as input and prints it. If the user wants text-to-speech conversion, this function also converts and plays the speech
-
     Parameters
     ----------
     string : str
         the string that will be either printed and then converted to speech, or just printed
-
     Returns
     -------
     Doesn't return, only prints and if applicable plays the speech file
-
     """
 
     global tts
