@@ -110,8 +110,7 @@ def information_loop(restaurants):
                     slots_found = [x for x in slots_found if x not in slots_confirmed]
                 slots_confirmed.extend(hmwp.confirmation_question(slots_found, slots, tts))
 
-        matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'],
-                                     slots['pricerange'])  # uses the lookup function to search for matched restaurants
+        matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])  # uses the lookup function to search for matched restaurants
 
         if len(matched_restaurants) < 2:  # if 0 or 1 matched restaurants are found, the loop breaks and returns either no restaurants or the one restaurant
             break
@@ -164,8 +163,6 @@ def check_slots():
             pattt.print_and_text_to_speech(
                 'Unfortunately, there are no options for that type of food.\nWhat kind of food would you like instead?', tts)
 
-            # answer_alternative = input().lower()
-            # slots['food'] = answer_alternative
             slots['food'] = input().lower()  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
         pattt.print_and_text_to_speech(hm.food_questions.pop())
@@ -206,7 +203,7 @@ def handle_alternatives(slots):
                             1], tts)  # showing the alternatives to the user
 
                     restaurant_counter += 1  # for safely storing restaurant names at a unique index
-
+                  
         a_or_b(restaurant_names)  # Letting the user either restate preferences (a) of choosing alternatives (b)
 
     else:  # if no alternatives are found, the user can change preferences
@@ -280,7 +277,8 @@ def restate():
 
     answer_alternative = input().lower()
 
-    slots[answer_domain] = answer_alternative  # The slots get updated with the new, desired preference for a given domain
+    slots[
+        answer_domain] = answer_alternative  # The slots get updated with the new, desired preference for a given domain
 
 
 def implication_loop(matchlist: pd.DataFrame):
@@ -382,7 +380,6 @@ def main():
         CONFIRMATION = False
 
     while True:
-
         pattt.print_and_text_to_speech('How can I help you?', tts)
 
         information_loop(restaurants)
