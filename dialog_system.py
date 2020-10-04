@@ -1,57 +1,36 @@
-import Levenshtein as ls
 from dialogActClassifier import dialog_act_classifier
-from gtts import gTTS
-from playsound import playsound
 import implication as imp
 import pandas as pd
-import random as rd
+import helping_methods as hm
+from gtts import gTTS
+from playsound import playsound
 import time
 
+def print_and_text_to_speech(string):
+    """Takes a string as input and prints it. If the user wants text-to-speech conversion, this function also converts and plays the speech
+    Parameters
+    ----------
+    string : str
+        the string that will be either printed and then converted to speech, or just printed
+    Returns
+    -------
+    Doesn't return, only prints and if applicable plays the speech file
+    """
 
-def keyword_matching(sentence, slot):
-    """Function checks if a keyword of a given slot is present in a given sentence. If so, the keyword is returned
-        Parameters
-        ----------
-        sentence : str
-            This is the string that needs to be analysed for keywords.
-        slot: str
-            The slot indicates for which keywords the sentence is analysed.
-        Returns
-        -------
-        A keyword if it exists in the sentence, else None
-        """
-    for w in sentence.split():
-        if w in keywords[slot]:
-            return w
+    global tts
 
+    print(string)
 
-def pattern_matching(sentence, slot):
-    """Function checks if a keyword of a given slot is present in a given sentence, using patterns. It also checks for
-    language errors.
-            Parameters
-            ----------
-            sentence : str
-                This is the string that needs to be analysed for keywords.
-            slot: str
-                The slot indicates for which keywords the sentence is analysed.
-            Returns
-            -------
-            A keyword if it exists in the sentence, else None
-            """
-    max_dist = 2
-    i = max_dist + 1
-    res = None
-    wordlist = sentence.split()
-    for w in wordlist:
-        if w in patterns[slot]:
-            index = wordlist.index(w) - 1
-            match = wordlist[index]
-            for value in keywords[slot]:
-                dist = ls.distance(match, value)
-                if dist <= max_dist and dist < i:
-                    i = dist
-                    res = value
-            return res
+    if tts:
+        language = 'en'
+
+        sound_to_play = gTTS(text=string, lang=language, slow=False)
+
+        unique_name = time.time()
+
+        sound_to_play.save("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
+
+        playsound("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
 
 
 def handle_suggestion(matchlist=None, restaurant_name=None):
@@ -60,7 +39,6 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
     restaurant will be removed from the matchlist. If the matchlist becomes empty the function is done. If the user
     accepts, or asked and received more information it checks for bye.
     If a restaurant name is given to the function, it will only suggest that one restaurant.
-
     Parameters
     ----------
     matchlist : pandas DataFrame
@@ -71,34 +49,28 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
     -------
     None
     """
-
     if restaurant_name is not None:
         matchlist = restaurants[restaurants.restaurantname == restaurant_name]
 
     while len(matchlist) > 0:
 
-        print_and_text_to_speech(
-            matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant that serves " + matchlist.iloc[
-                0, 3] + ".")
+        print_and_text_to_speech(hm.restaurant_to_string(matchlist.iloc[0]))
         print_and_text_to_speech('Would you like more information about this restaurant?')
         utterance = input().lower()
 
         response = dialog_act_classifier(utterance)  # response is een act
 
         if response == 'affirm' or response == 'confirm':
-            print_and_text_to_speech(
-                "The adress is " + str(matchlist.iloc[0, 5]) + ", " + str(matchlist.iloc[0, 6]) + " and the phone number is " +
-                str(matchlist.iloc[0, 4]) + ".")
+            print_and_text_to_speech(hm.restaurant_info_to_string(matchlist.iloc[0]))
             utterance = input().lower()
             check_for_bye(utterance)
-
 
         elif response == 'inform' or response == 'request':
 
             while response == 'inform' or response == 'request':  # als de user om het adres of telefoonnummer vraagt
-                if 'adress' in utterance:
+                if 'address' in utterance:
                     print_and_text_to_speech(
-                        "The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
+                        "The address is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
 
                 elif 'phone' in utterance or 'number' in utterance:
                     print_and_text_to_speech("The phone number is " + matchlist.iloc[0, 4] + ".")
@@ -108,10 +80,10 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
                         "I am sorry, I am not able to understand, here is all the available information")
 
                     print_and_text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant " +
-                                             area_to_sentence_par(matchlist.iloc[0, 2]) + " that serves " +
+                                             hm.area_to_sentence_par(matchlist.iloc[0, 2]) + " that serves " +
                                              matchlist.iloc[0, 3] + ".")
 
-                    print_and_text_to_speech("The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
+                    print_and_text_to_speech("The address is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
                         0, 6] + " and the phone number is " +
                                              matchlist.iloc[0, 4] + ".")
 
@@ -119,9 +91,8 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
                 response = dialog_act_classifier(utterance)
                 check_for_bye(utterance)
 
-        elif response == 'deny' or 'negate':
+        elif response == 'deny' or response == 'negate':
             matchlist = matchlist.iloc[1:]
-
         else:
             print_and_text_to_speech('Sorry I did not understand to you.')
 
@@ -129,21 +100,6 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
     check_slots()
     return
 
-
-def area_to_sentence_par(area):
-    """Creates a clause to describe the area
-    Parameters
-    ----------
-    area : str
-        the area that describes the part of town
-    Returns
-    -------
-    It returns "centre of town" or area (south, north, east, west) + " part of town"
-    """
-    if area == "centre":
-        return "centre of town"
-    else:
-        return area + " part of town"
 
 
 def check_for_bye(utterance):
@@ -160,57 +116,6 @@ def check_for_bye(utterance):
     if response == 'bye' or response in 'thankyou':
         print_and_text_to_speech("Bye")
         quit()
-
-
-def load_restaurants():
-    """Function that loads restaurants in a pandas DataFrame from the csv file.
-        Parameters
-        ----------
-        Returns
-        -------
-        restaurants : pandas DataFrame
-            DataFrame containing the restaurants and their properties from the csv file.
-        """
-    restaurants = pd.read_csv('restaurant_info4.csv')
-    return restaurants
-
-
-def lookup(restaurants, area=None, food=None, pricerange=None):
-    """Function that looks up restaurants in the database based on inputted preferences.
-    Parameters
-    ----------
-    restaurants : pandas DataFrame
-        this df contains all the restaurants in the csv file
-    area: str
-        this string contains the preference for the area property of the restaurant
-    food: str
-        this string contains the preference for the food property of the restaurant
-    pricerange: str
-        this string contains the preference for the pricerange property of the restaurant
-
-    Returns
-    -------
-    matched_restaurants : pandas DataFrame
-        updated version of the df, containing the restaurants that match the given preferences
-    """
-    if area == 'any':
-        area = None
-    if food == 'any':
-        food = None
-    if pricerange == 'any':
-        pricerange = None
-
-    if area is not None:
-        area = area.lower()
-        restaurants = restaurants[(restaurants.area == area)]
-    if food is not None:
-        food = food.lower()
-        restaurants = restaurants[(restaurants.food == food)]
-    if pricerange is not None:
-        pricerange = pricerange.lower()
-        restaurants = restaurants[(restaurants.pricerange == pricerange)]
-
-    return restaurants
 
 
 def information_loop(restaurants):
@@ -248,7 +153,7 @@ def information_loop(restaurants):
                 confirmation_question(slots_found)
                 slots_found = []
 
-        matched_restaurants = lookup(restaurants, slots['area'], slots['food'],
+        matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'],
                                      slots['pricerange'])  # uses the lookup function to search for matched restaurants
 
         if len(matched_restaurants) < 2:  # if 0 or 1 matched restaurants are found, the loop breaks and returns either no restaurants or the one restaurant
@@ -263,9 +168,9 @@ def information_loop(restaurants):
 
 def subtract_information_and_update_slots(utterance):
     for key in filter(lambda x: slots[x] is None, slots):
-        slots[key] = keyword_matching(utterance, key)
+        slots[key] = hm.keyword_matching(utterance, key)
         if slots[key] is None:
-            slots[key] = pattern_matching(utterance, key)
+            slots[key] = hm.pattern_matching(utterance, key)
 
 
 def check_slots():
@@ -287,17 +192,16 @@ def check_slots():
             pricerange_question)  # prints a question regarding the pricerange if that bit of knowledge is unknown
 
     elif not slots['food']:
-         # prints a question regarding the food if that bit of knowledge is unknown
+        # prints a question regarding the food if that bit of knowledge is unknown
         if not food_questions:  # This checks whether both the food questions have been asked, if so, the user has uttered an impossible foodtype wish
             # in that case, the user can restate a foodtype preference
             print_and_text_to_speech(
-                'Unfortunately, there are no options for that type of food. \nWhat kind of food would you like instead?')
+                'Unfortunately, there are no options for that type of food.\nWhat kind of food would you like instead?')
 
-            answer_alternative = input().lower()
-
-            slots['food'] = answer_alternative  # if the user has restated a preference, the slots are updated
+            # answer_alternative = input().lower()
+            # slots['food'] = answer_alternative
+            slots['food'] = input().lower()  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
-
         print_and_text_to_speech(food_questions.pop())
 
 def confirmation_question(slots_found):
@@ -399,20 +303,20 @@ def search_alternatives(slots):
 
             temp_slots[domain] = alt
 
-            if len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) == 1:
+            if len(hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) == 1:
                 # if one alternative is found, this restaurant is added to the possible_restaurants_dict
 
-                restaurant = lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
+                restaurant = hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
                     0]
                 possible_restaurants_dict[domain].append([restaurant[0], restaurant[1], restaurant[2], restaurant[3]])
 
-            elif len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) > 1:
+            elif len(hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) > 1:
                 # if more than one alternative is found, a loop goes over the possible restaurants and adds them to the possible_restaurants_dict
 
                 for rest in range(
-                        len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']))):
+                        len(hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']))):
                     restaurant = \
-                        lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
+                        hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
                             rest]
                     possible_restaurants_dict[domain].append(
                         [restaurant[0], restaurant[1], restaurant[2], restaurant[3]])
@@ -536,35 +440,7 @@ def restate():
 
     answer_alternative = input().lower()
 
-    slots[
-        answer_domain] = answer_alternative  # The slots get updated with the new, desired preference for a given domain
-
-
-def print_and_text_to_speech(string):
-    """Takes a string as input and prints it. If the user wants text-to-speech conversion, this function also converts and plays the speech
-    Parameters
-    ----------
-    string : str
-        the string that will be either printed and then converted to speech, or just printed
-    Returns
-    -------
-    Doesn't return, only prints and if applicable plays the speech file
-    """
-
-    global tts
-
-    print(string)
-
-    if tts:
-        language = 'en'
-
-        sound_to_play = gTTS(text=string, lang=language, slow=False)
-
-        unique_name = time.time()
-
-        sound_to_play.save("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
-
-        playsound("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
+    slots[answer_domain] = answer_alternative  # The slots get updated with the new, desired preference for a given domain
 
 
 def implication_loop(matchlist: pd.DataFrame):
@@ -578,8 +454,8 @@ def implication_loop(matchlist: pd.DataFrame):
     -------
     None
     """
-    imp.getConsequences(matchlist)
-    implication_loop_recursive(matchlist)
+    imp.get_consequences(matchlist)
+    return implication_loop_recursive(matchlist)
 
 
 def implication_loop_recursive(matchlist: pd.DataFrame):
@@ -595,29 +471,30 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
     The outcome of handle_suggestion
     """
     matchlist_copy = matchlist.copy(deep=False)
-    distinguishers = findDistinguishers(matchlist)
+    distinguishers = hm.find_distinguishers(matchlist)
     print_and_text_to_speech("There are multiple restaurants left.")
 
     while len(distinguishers) > 0 and matchlist.shape[0] > 1:
-        print_and_text_to_speech(getNextQuestion(matchlist.columns[distinguishers[0]]))
+        print_and_text_to_speech(hm.get_next_question(matchlist.columns[distinguishers[0]]))
         response = input().lower()
         d_act = dialog_act_classifier(response)
         if d_act == 'affirm':
             matchlist = matchlist[(matchlist.iloc[:, distinguishers[0]] == True)]
-            distinguishers = findDistinguishers(matchlist)
+            distinguishers = hm.find_distinguishers(matchlist)
         elif d_act == 'negate' or d_act == 'deny':
             matchlist = matchlist[(matchlist.iloc[:, distinguishers[0]] == False)]
-            distinguishers = findDistinguishers(matchlist)
+            distinguishers = hm.find_distinguishers(matchlist)
     hs = handle_suggestion(matchlist)
-
+    if matchlist.shape[0] > 1:
+        print_and_text_to_speech("The remaining restaurants could not be further distinguished from one another")
     if hs is None:
         print_and_text_to_speech("There is no restaurant that satisfies all your preferences.\nWould you like to:\n"
                                  + "a: Change your area, pricerange or foodtype\nb: Restate the other attributes")
         ab = a_b_loop()
         if ab == "a":
-            return None  # Hij moet naar de information loop gaan
+            return None
         elif ab == "b":
-            implication_loop_recursive(matchlist_copy)
+            return implication_loop_recursive(matchlist_copy)
     else:
         return hs
 
@@ -639,66 +516,6 @@ def a_b_loop():
         print_and_text_to_speech("Please type either a or b")
         return a_b_loop()
 
-
-def findDistinguishers(matchlist):
-    """The columns, which the system has not asked about, which can distinguish the different restaurants present in
-    the matchlist
-    Parameters
-    ----------
-    matchlist : pandas dataframe
-        a dataframe with restaurants filtered based on the 'slots'
-    Returns
-    -------
-    It returns a list with the indexes of the columns that can be used to distinguish the restaurants in matchlist
-    """
-    distinguishers = []
-    for i in range(7, matchlist.shape[1]):
-        num = matchlist.iloc[:, i].value_counts().iloc[0]
-        if num != len(matchlist) and num != 0:
-            distinguishers.append(i)
-    return distinguishers
-
-
-def getNextQuestion(columnName: str):
-    """Creates a new question (yes-no question) based on the name of a column
-    Parameters
-    ----------
-    columnName : str
-        the name of one of the columns (that the system has not yet asked questions about)
-    Returns
-    -------
-    It returns a string with the question that the system should ask next
-    """
-    prob = rd.randint(0, 3)
-    qclause = getQuestionClause(columnName)
-    questionoptions = ["Would you like a ", "How about a ", "Shall I recommend a ", "Do you prefer a "]
-    return questionoptions[prob] + qclause + "?"
-
-
-def getQuestionClause(cn: str):
-    """Creates a new question clause based on the name of a column
-    Parameters
-    ----------
-    cn : str
-        the name of one of the columns
-    Returns
-    -------
-    It returns a string with the (subject) clause that describes the restaurant
-    """
-    answers = ["restaurant with ", "restaurant with a ", "restaurant with ", " ", "restaurant that takes a ",
-               " ", "restaurant with ", "restaurant that serves ", "restaurant that is fit for ", " ",
-               "restaurant that is a "]
-    options = ["pets allowed", "multi language menu", "good food", "busy", "long time", "dirty", "many tourists",
-               "spicy", "children", "romantic", "tourist trap"]
-    index = options.index(cn)
-    if index in [0, 1, 2, 4, 6, 8, 10]:
-        return answers[index] + cn
-    elif index in [3, 5, 9]:
-        return cn + " restaurant"
-    elif index in [7]:
-        return answers[index] + cn + " food"
-
-
 slots = {}
 questions = {}
 
@@ -711,18 +528,7 @@ pricerange_question = 'What pricerange were you thinking of?'
 food_questions = ['Do you have any specific preferences regarding the type of food?',
                   'What type of food are you looking for?']
 
-restaurants = load_restaurants()
-
-keywords = {'food': list(dict.fromkeys(list(restaurants.food))),
-            'area': ['west', 'north', 'south', 'centre', 'east'],
-            'pricerange': ['cheap', 'moderate', 'expensive'],
-            'type': ['restaurant', 'bar', 'brasserie']
-            }
-patterns = {'food': ['food'],
-            'area': ['part' 'area'],
-            'pricerange': ['priced', 'price'],
-            'type': []
-            }
+restaurants = hm.restaurants
 
 set_membership = {}  # this dictionary is for checking which preferences can be swapped for a member alternative (like cheap - moderate)
 set_membership['pricerange'] = {0: ['cheap', 'moderate'],
@@ -773,12 +579,11 @@ def main():
     else:
         CONFIRMATION = False
 
-    print_and_text_to_speech('How can I help you?')
-
     while True:
-
+        print_and_text_to_speech('How can I help you?')
+        
         information_loop(restaurants)
-        matched_restaurants = lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
+        matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
 
         if len(matched_restaurants) == 0:  # If no matching restaurants found, find alternatives or restate preferences
             check_slots()
@@ -790,5 +595,9 @@ def main():
 
         elif len(matched_restaurants) > 1:  # If multiple matching restaurants found, find the best one for the user
             implication_loop(matched_restaurants)
+            slots['area'] = None
+            slots['pricerange'] = None
+            slots['food'] = None
+
 
 main()
