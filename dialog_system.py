@@ -198,7 +198,6 @@ def check_slots():
         print_and_text_to_speech(pricerange_question) # prints a question regarding the pricerange if that bit of knowledge is unknown
 
     elif not slots['food']:
-
         # prints a question regarding the food if that bit of knowledge is unknown
         if not food_questions:  # This checks whether both the food questions have been asked, if so, the user has uttered an impossible foodtype wish
             # in that case, the user can restate a foodtype preference
@@ -209,6 +208,7 @@ def check_slots():
             # slots['food'] = answer_alternative
             slots['food'] = input().lower()  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
+        print_and_text_to_speech(food_questions.pop())
 
 
 def confirmation_question(slots_found):
@@ -562,7 +562,7 @@ def main():
         CONFIRMATION = False
 
     while True:
-        print_and_text_to_speech('What kind of restaurant are you looking for?')
+        print_and_text_to_speech('How can I help you?')
         
         information_loop(restaurants)
         matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
