@@ -6,7 +6,6 @@ from gtts import gTTS
 from playsound import playsound
 import time
 
-
 def print_and_text_to_speech(string):
     """Takes a string as input and prints it. If the user wants text-to-speech conversion, this function also converts and plays the speech
     Parameters
@@ -100,7 +99,7 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
     print_and_text_to_speech('Let me see how I can help you!')
     check_slots()
     return
-
+  
 
 def check_for_bye(utterance):
     """Checks if the user has said "bye" yet and closes down in case the user has
@@ -198,7 +197,7 @@ def check_slots():
             slots['food'] = input().lower()  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
         print_and_text_to_speech(food_questions.pop())
-
+        
 
 def confirmation_question(slots_found):
     """Function provides confirmation questions when slots are filled.
@@ -348,7 +347,7 @@ def handle_alternatives(slots):
                             1])  # showing the alternatives to the user
 
                     restaurant_counter += 1  # for safely storing restaurant names at a unique index
-
+                  
         a_or_b(restaurant_names)  # Letting the user either restate preferences (a) of choosing alternatives (b)
 
     else:  # if no alternatives are found, the user can change preferences
@@ -497,7 +496,6 @@ def a_b_loop():
     else:
         print_and_text_to_speech("Please type either a or b")
         return a_b_loop()
-
 
 slots = {}
 questions = {}
