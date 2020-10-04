@@ -5,4 +5,4 @@
 *.xml
 *.pyc
 *.mp3
-.DS_Store
+*.ipynb

@@ -39,7 +39,6 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
     restaurant will be removed from the matchlist. If the matchlist becomes empty the function is done. If the user
     accepts, or asked and received more information it checks for bye.
     If a restaurant name is given to the function, it will only suggest that one restaurant.
-
     Parameters
     ----------
     matchlist : pandas DataFrame
@@ -62,7 +61,6 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
         response = dialog_act_classifier(utterance)  # response is een act
 
         if response == 'affirm' or response == 'confirm':
-
             print_and_text_to_speech(hm.restaurant_info_to_string(matchlist.iloc[0]))
             utterance = input().lower()
             check_for_bye(utterance)
@@ -87,8 +85,7 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
 
                     print_and_text_to_speech("The address is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
                         0, 6] + " and the phone number is " +
-                          matchlist.iloc[0, 4] + ".")
-
+                                             matchlist.iloc[0, 4] + ".")
 
                 utterance = input().lower()
                 response = dialog_act_classifier(utterance)
@@ -98,9 +95,10 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
             matchlist = matchlist.iloc[1:]
         else:
             print_and_text_to_speech('Sorry I did not understand to you.')
+
     print_and_text_to_speech('Let me see how I can help you!')
     check_slots()
-    return None
+    return
 
 
 
@@ -122,26 +120,24 @@ def check_for_bye(utterance):
 
 def information_loop(restaurants):
     """Function that loops until all the slots have been filled
-
     Parameters
     ----------
     restaurants : pandas DataFrame
         this df contains all the restaurants in the csv file
-
     Returns
     -------
     matched_restaurants : pandas DataFrame
         updated version of the df, containing the restaurants that match the given preferences
     """
-    first_sentence = True # checks whether it is dealing with the first question of the conversation
+    first_sentence = True  # checks whether it is dealing with the first question of the conversation
     slots_found = []
 
-    matched_restaurants = restaurants # if all that slots have been filled,
+    matched_restaurants = restaurants  # if all that slots have been filled,
     while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
 
-        utterance = input().lower() # lets the user state a preference
+        utterance = input().lower()  # lets the user state a preference
 
-        subtract_information_and_update_slots(utterance) # checks what knowledge the utterance contains
+        subtract_information_and_update_slots(utterance)  # checks what knowledge the utterance contains
 
         if first_sentence is False:
             if 'any' in utterance or 'do not care' in utterance:
@@ -151,28 +147,26 @@ def information_loop(restaurants):
                         slots_found.append(s)
                         break
 
-        if CONFIRMATION: # if the user has stated to want confirmation, this part restates the understood preferences
+        if CONFIRMATION:  # if the user has stated to want confirmation, this part restates the understood preferences
             if dialog_act_classifier(utterance) == 'inform':
                 slots_found = [slot for slot in slots if slots[slot] is not None][:-1]
                 confirmation_question(slots_found)
                 slots_found = []
 
-
         matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'],
                                      slots['pricerange'])  # uses the lookup function to search for matched restaurants
 
-        if len(matched_restaurants) < 2: # if 0 or 1 matched restaurants are found, the loop breaks and returns either no restaurants or the one restaurant
+        if len(matched_restaurants) < 2:  # if 0 or 1 matched restaurants are found, the loop breaks and returns either no restaurants or the one restaurant
             break
 
-        check_slots() # since there are more options still available, the slots are checked to narrow down the search
+        check_slots()  # since there are more options still available, the slots are checked to narrow down the search
 
-        first_sentence = False # sets first_sentence to False after first iteration of the loop
+        first_sentence = False  # sets first_sentence to False after first iteration of the loop
 
     return matched_restaurants
 
 
 def subtract_information_and_update_slots(utterance):
-
     for key in filter(lambda x: slots[x] is None, slots):
         slots[key] = hm.keyword_matching(utterance, key)
         if slots[key] is None:
@@ -181,21 +175,21 @@ def subtract_information_and_update_slots(utterance):
 
 def check_slots():
     """Function checks if a slot is filled or not. If not, prints a question to fill slot.
-
     Parameters
     ----------
     None
-
     Returns
     -------
     None if user doesn't want to restate preferences if a certain type of food is not possible
     """
 
     if not slots['area']:
-        print_and_text_to_speech(area_question) # prints a question regarding the area if that bit of knowledge is unknown
+        print_and_text_to_speech(
+            area_question)  # prints a question regarding the area if that bit of knowledge is unknown
 
     elif not slots['pricerange']:
-        print_and_text_to_speech(pricerange_question) # prints a question regarding the pricerange if that bit of knowledge is unknown
+        print_and_text_to_speech(
+            pricerange_question)  # prints a question regarding the pricerange if that bit of knowledge is unknown
 
     elif not slots['food']:
         # prints a question regarding the food if that bit of knowledge is unknown
@@ -210,8 +204,16 @@ def check_slots():
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
         print_and_text_to_speech(food_questions.pop())
 
-
 def confirmation_question(slots_found):
+    """Function provides confirmation questions when slots are filled.
+    Parameters
+    ----------
+    slots_found : list
+        consists the slots that are filled by the last utterance of the user
+    Returns
+    -------
+    None
+    """
     for s in slots_found:
         if s == 'food':
             print('You are looking for {} food, correct?'.format(slots[s]))
@@ -226,14 +228,12 @@ def confirmation_question(slots_found):
 
 def member_alternative(domain, preference):
     """Function used to check which members in the set membership can be used to search for alternatives (example: thai and chinese can be swapped)
-
     Parameters
     ----------
     domain : str
         either 'area', 'food' or 'pricerange'
     preference : str
         contains the preference for a given domain (example: domain = 'area', preference = 'north')
-
     Returns
     -------
     None if no preference is present for a given domain
@@ -241,8 +241,8 @@ def member_alternative(domain, preference):
         list containing the possible alternatives based on the set membership only
     """
 
-    if preference == None: # if no preference is found, the system needs to check first whether there is a preference for that domain
-        print_and_text_to_speech('Can not find alternatives for type None for: ' + domain)
+    if preference == None:  # if no preference is found, the system needs to check first whether there is a preference for that domain
+        # print_and_text_to_speech('Can not find alternatives for type None for: ' + domain)
         return
 
     domain = domain.lower()
@@ -252,24 +252,26 @@ def member_alternative(domain, preference):
 
     for x in range(len(set_membership[domain])):
 
-        if preference in set_membership[domain][x]: # checks if certain preferences are in the set_membership dictionary
+        if preference in set_membership[domain][
+            x]:  # checks if certain preferences are in the set_membership dictionary
 
             for y in range(len(set_membership[domain][x])):
-                if set_membership[domain][x][y] not in updated_members: # checks whether a certain preference isn't already in the possible members list
+                if set_membership[domain][x][
+                    y] not in updated_members:  # checks whether a certain preference isn't already in the possible members list
                     updated_members.append(set_membership[domain][x][y])
 
-    updated_members.remove(preference) # removes the current preference, since this has been added as part of the members, but plays no role in the alternatives
+    if preference in updated_members:
+        updated_members.remove(
+            preference)  # removes the current preference, since this has been added as part of the members, but plays no role in the alternatives
     return updated_members
 
 
 def search_alternatives(slots):
     """Searches for alternatives in the csv file using the possible members from member_alternative
-
     Parameters
     ----------
     slots : dict
         slots is the dictionary that holds the knowledge regarding the preferences per domain
-
     Returns
     -------
     None if no member_alternatives can be found, possibly because of an empty slot
@@ -283,15 +285,19 @@ def search_alternatives(slots):
     possible_restaurants_dict['pricerange'] = []
 
     for domain in ['area', 'food', 'pricerange']:
-        try:
-            alternatives_for_domain = member_alternative(domain, slots[domain]) # checks alternatives based on set membership
 
-        except TypeError:
-            raise Exception('Can not find alternative for NoneType')
-            return
+        if member_alternative(domain, slots[domain]) == None:
+            break
 
-        temp_slots = slots.copy() # to use the slots, but to not change them, a copy is made to check for alternatives
-        temp_slots[domain] = [] # for storing more than one alternatives, a list is made per domain
+        alternatives_for_domain = member_alternative(domain,
+                                                     slots[domain])  # checks alternatives based on set membership
+
+        # except TypeError:
+        #   raise Exception('Can not find alternative for NoneType')
+        #  return
+
+        temp_slots = slots.copy()  # to use the slots, but to not change them, a copy is made to check for alternatives
+        temp_slots[domain] = []  # for storing more than one alternatives, a list is made per domain
 
         for alt in alternatives_for_domain:
 
@@ -320,46 +326,48 @@ def search_alternatives(slots):
 
 def handle_alternatives(slots):
     """Main function for organizing the process of choosing an alternative when no restaurant match is found
-
     Parameters
     ----------
     slots : dict
         slots is the dictionary that holds the knowledge regarding the preferences per domain
-
     Returns
     -------
     Doesn't return anything, but calls a_or_b if there are several options, or asks if the user wants to restate preferences when no alternatives are possible
     """
     number_of_alternatives = len(search_alternatives(slots)['area']) + len(search_alternatives(slots)['food']) + len(
-        search_alternatives(slots)['pricerange']) # For checking how many alternatives are possible
-    restaurant_names = {} # dict containing a restaurant name at a given index
-    restaurant_counter = 0 # for indexing restaurant_names
+        search_alternatives(slots)['pricerange'])  # For checking how many alternatives are possible
+    restaurant_names = {}  # dict containing a restaurant name at a given index
+    restaurant_counter = 0  # for indexing restaurant_names
 
     if number_of_alternatives > 0:
-        print_and_text_to_speech('Unfortunately, there are no restaurants found. \nThe following alternatives are available:')
+        print_and_text_to_speech(
+            'Unfortunately, there are no restaurants found. \nThe following alternatives are available:')
 
         for domain in ['area', 'food', 'pricerange']:
 
             if not len(search_alternatives(slots)[domain]) == 0:
 
                 for option in range(len(search_alternatives(slots)[domain])):
-                    #option_dict = {}
-                    #option_dict['area'] = search_alternatives(slots)[domain][option][2]
-                    #option_dict['food'] = search_alternatives(slots)[domain][option][3]
-                    #option_dict['pricerange'] = search_alternatives(slots)[domain][option][1]
-                    #restaurant_index.append(option_dict)
+                    # option_dict = {}
+                    # option_dict['area'] = search_alternatives(slots)[domain][option][2]
+                    # option_dict['food'] = search_alternatives(slots)[domain][option][3]
+                    # option_dict['pricerange'] = search_alternatives(slots)[domain][option][1]
+                    # restaurant_index.append(option_dict)
 
-                    #search_alternatives(slots)[domain][option][0]
-                    restaurant_names[restaurant_counter] = search_alternatives(slots)[domain][option][0] # adds restaurant to the dict
+                    # search_alternatives(slots)[domain][option][0]
+                    restaurant_names[restaurant_counter] = search_alternatives(slots)[domain][option][
+                        0]  # adds restaurant to the dict
 
-                    print_and_text_to_speech(str(restaurant_counter) + ' : ' + search_alternatives(slots)[domain][option][
-                        0] + ' is a restaurant in the ' + search_alternatives(slots)[domain][option][
-                              2] + ' part of town that serves ' + search_alternatives(slots)[domain][option][
-                              3] + ' in the pricerange of ' + search_alternatives(slots)[domain][option][1]) # showing the alternatives to the user
+                    print_and_text_to_speech(
+                        str(restaurant_counter) + ' : ' + search_alternatives(slots)[domain][option][
+                            0] + ' is a restaurant in the ' + search_alternatives(slots)[domain][option][
+                            2] + ' part of town that serves ' + search_alternatives(slots)[domain][option][
+                            3] + ' in the pricerange of ' + search_alternatives(slots)[domain][option][
+                            1])  # showing the alternatives to the user
 
-                    restaurant_counter += 1 # for safely storing restaurant names at a unique index
+                    restaurant_counter += 1  # for safely storing restaurant names at a unique index
 
-        a_or_b(restaurant_names) # Letting the user either restate preferences (a) of choosing alternatives (b)
+        a_or_b(restaurant_names)  # Letting the user either restate preferences (a) of choosing alternatives (b)
 
     else:  # if no alternatives are found, the user can change preferences
         print_and_text_to_speech('There are no alternatives, would you like to change your preferences?')
@@ -368,15 +376,19 @@ def handle_alternatives(slots):
         if response == 'affirm':
             restate()
 
+        else:
+            print_and_text_to_speech('Then I am afraid that I can not help you')
+
+            response = input().lower()
+            check_for_bye(response)
+
 
 def a_or_b(restaurant_names):
     """Function for handling restating preferences (a) or choosing alternatives (b) when no restaurant match is found
-
     Parameters
     ----------
     restaurant_names : dict
         dictionary that contains the restaurant names in order to suggest them whenever alternative is chosen
-
     Returns
     -------
     Doesn't return anything, but either calls restate() if a, or
@@ -384,7 +396,7 @@ def a_or_b(restaurant_names):
     print_and_text_to_speech('Would you like to: \n a: restate your preferences \n b: Choose one of these alternatives')
     answer_a_or_b = input()
 
-    while answer_a_or_b not in ['a', 'b']: # Handling misspells
+    while answer_a_or_b not in ['a', 'b']:  # Handling misspells
         print_and_text_to_speech('please type a or b')
 
         answer_a_or_b = input()
@@ -398,32 +410,30 @@ def a_or_b(restaurant_names):
         answer = int(input())
 
         while answer not in range(len(restaurant_names)):
-            print_and_text_to_speech(f'please type a number between 0 and {len(restaurant_names)-1}') # Handling misspells
+            print_and_text_to_speech(
+                f'please type a number between 0 and {len(restaurant_names) - 1}')  # Handling misspells
 
             answer = int(input())
 
-        handle_suggestion(restaurant_name=restaurant_names[answer]) # When an alternative is chosen, the name of the restaurant (on the given index in the dictionary) is passed to handle_suggestion
+        handle_suggestion(restaurant_name=restaurant_names[answer])  # When an alternative is chosen, the name of the restaurant (on the given index in the dictionary) is passed to handle_suggestion
 
 
 def restate():
     """Function can be used whenever the option is chosen to restate the preferences.
-
     Parameters
     ----------
     None
-
     Returns
     -------
     Doesn't return anything, but asks the user which domain and preference are desired to be changed
-
     """
     print_and_text_to_speech('which domain would you like to change?')
-
 
     answer_domain = input().lower()
 
     if answer_domain not in ['area', 'food', 'pricerange']:
-        print_and_text_to_speech('Please select area, food or pricerange.') # This is done to catch the exception where the user misspells anything
+        print_and_text_to_speech(
+            'Please select area, food or pricerange.')  # This is done to catch the exception where the user misspells anything
         answer_domain = input().lower()
 
     print_and_text_to_speech('What alternative would you like?')
@@ -469,7 +479,6 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
         response = input().lower()
         d_act = dialog_act_classifier(response)
         if d_act == 'affirm':
-
             matchlist = matchlist[(matchlist.iloc[:, distinguishers[0]] == True)]
             distinguishers = hm.find_distinguishers(matchlist)
         elif d_act == 'negate' or d_act == 'deny':
@@ -521,7 +530,7 @@ food_questions = ['Do you have any specific preferences regarding the type of fo
 
 restaurants = hm.restaurants
 
-set_membership = {} # this dictionary is for checking which preferences can be swapped for a member alternative (like cheap - moderate)
+set_membership = {}  # this dictionary is for checking which preferences can be swapped for a member alternative (like cheap - moderate)
 set_membership['pricerange'] = {0: ['cheap', 'moderate'],
                                 1: ['moderate', 'expensive']}
 
@@ -541,11 +550,20 @@ possible_alternatives = {}
 
 
 def main():
+    """Main function that initiates and runs the dialog system. Handles configurability, the information loop,
+    and the suggestion of restaurants or alternatives.
+    Parameters
+    ----------
+    none
+    Returns
+    -------
+    none
+    """
     global tts, CONFIRMATION
 
     print('Welcome to our restaurant recommendation system. \n Would you like to use Text-to-Speech? [yes/no]')
 
-    tts_answer = dialog_act_classifier(input())
+    tts_answer = dialog_act_classifier(input())  # If yes, set text-to-speech(tts) to True
     if tts_answer == 'affirm':
         tts = True
 
@@ -553,8 +571,8 @@ def main():
         tts = False
 
     print_and_text_to_speech('Would you want confirmation for your preferences turned on? [yes/no]')
-    confirmation_answer = dialog_act_classifier(input())
 
+    confirmation_answer = dialog_act_classifier(input())  # If yes, set text-to-speech(tts) to True
     if confirmation_answer == 'affirm':
         CONFIRMATION = True
 
@@ -567,15 +585,15 @@ def main():
         information_loop(restaurants)
         matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
 
-        if len(matched_restaurants) == 0:
+        if len(matched_restaurants) == 0:  # If no matching restaurants found, find alternatives or restate preferences
             check_slots()
-            handle_alternatives(slots)
             information_loop(restaurants)
+            handle_alternatives(slots)
 
-        elif len(matched_restaurants) == 1:
+        elif len(matched_restaurants) == 1:  # If 1 matching restaurants found, suggest that restaurant
             handle_suggestion(matched_restaurants)
 
-        elif len(matched_restaurants) > 1:
+        elif len(matched_restaurants) > 1:  # If multiple matching restaurants found, find the best one for the user
             implication_loop(matched_restaurants)
             slots['area'] = None
             slots['pricerange'] = None
