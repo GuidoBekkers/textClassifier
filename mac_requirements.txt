@@ -1,0 +1,9 @@
+pandas==1.0.5
+numpy==1.17.0
+joblib==0.16.0
+playsound==1.2.2
+gTTS==2.1.1
+python_Levenshtein==0.12.0
+scikit_learn==0.23.2
+pyobjc==6.2.2
+AppKit
