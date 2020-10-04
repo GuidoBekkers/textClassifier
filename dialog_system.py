@@ -264,25 +264,18 @@ def check_slots():
             pricerange_question)  # prints a question regarding the pricerange if that bit of knowledge is unknown
 
     elif not slots['food']:
-
+         # prints a question regarding the food if that bit of knowledge is unknown
         if not food_questions:  # This checks whether both the food questions have been asked, if so, the user has uttered an impossible foodtype wish
             # in that case, the user can restate a foodtype preference
             print_and_text_to_speech(
-                'Unfortunately, there are no options for that type of food. \nwould you like to restate your food preference?')
+                'Unfortunately, there are no options for that type of food. \nWhat kind of food would you like instead?')
 
-            answer = dialog_act_classifier(input())
-            if answer == 'affirm' or answer == 'confirm':
-                print_and_text_to_speech('What kind of food would you like instead?')
+            answer_alternative = input().lower()
 
-                answer_alternative = input().lower()
-
-                slots['food'] = answer_alternative  # if the user has restated a preference, the slots are updated
-
+            slots['food'] = answer_alternative  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
 
-        print_and_text_to_speech(
-            food_questions[0])  # prints a question regarding the pricerange if that bit of knowledge is unknown
-        food_questions.remove(food_questions[0])
+        print_and_text_to_speech(food_questions.pop())
 
 def confirmation_question(slots_found):
     for s in slots_found:
