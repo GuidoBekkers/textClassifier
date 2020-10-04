@@ -1,5 +1,11 @@
 from joblib import load
+import re
+import string
 
+contraptions = {'doesnt': "does not",
+               'im': 'i am',
+               'dont': 'do not',
+               'id': 'i would'}
 
 def initialize_classifier():
     """Loads the classifier object from a .joblib file.
@@ -10,7 +16,7 @@ def initialize_classifier():
     -------
     classifier object."""
 
-    return load('MLP.joblib')
+    return load('joblibs/MLP.joblib')
 
 
 def initialize_vectorizer():
@@ -22,14 +28,14 @@ def initialize_vectorizer():
     -------
     vectorizer object."""
 
-    return load('BOW_vect.joblib')
+    return load('joblibs/BOW_vect.joblib')
 
 
 clf = initialize_classifier()
 BOW_vect = initialize_vectorizer()
 
 def dialog_act_classifier(utterance):
-    """Vectorises the input and then classifies using the classifier object.
+    """Cleans the input and then vectorizes it and then classifies using the classifier object.
     Parameters
     ----------
     utterance: str
@@ -37,6 +43,9 @@ def dialog_act_classifier(utterance):
     Returns
     -------
     prediction: str"""
-
-    vectorized_utterance = BOW_vect.transform([utterance.lower()])
+    utterance = utterance.lower()
+    utterance = utterance.translate(str.maketrans('', '', string.punctuation))
+    for key in contraptions.keys():
+        utterance = utterance.replace(key, contraptions[key])
+    vectorized_utterance = BOW_vect.transform([utterance])
     return clf.predict(vectorized_utterance)[0]
