@@ -4,7 +4,7 @@
 This an the implementation of a dialog system, which is part of the group project of the Methods in Artificial Intelligence Research (MAIR) course at Utrecht University.
 
 #### Requirements
-The necessary requirements can be installed at once using the following command: 'pip install -r requirements.txt'
+The necessary requirements for MacOS and Windows can be installed at once using one of the following commands: 'pip install -r mac_requirements.txt' or 'pip install -r windows_requirements.txt'. 
 
 #### Dialog system
 The dailog system is implemented in the dialog_system.py file. One can run this file using the following command in the command line: `python dialog_system.py`. 
