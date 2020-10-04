@@ -9,12 +9,35 @@ import time
 
 
 def keyword_matching(sentence, slot):
+    """Function checks if a keyword of a given slot is present in a given sentence. If so, the keyword is returned
+        Parameters
+        ----------
+        sentence : str
+            This is the string that needs to be analysed for keywords.
+        slot: str
+            The slot indicates for which keywords the sentence is analysed.
+        Returns
+        -------
+        A keyword if it exists in the sentence, else None
+        """
     for w in sentence.split():
         if w in keywords[slot]:
             return w
 
 
 def pattern_matching(sentence, slot):
+    """Function checks if a keyword of a given slot is present in a given sentence, using patterns. It also checks for
+    language errors.
+            Parameters
+            ----------
+            sentence : str
+                This is the string that needs to be analysed for keywords.
+            slot: str
+                The slot indicates for which keywords the sentence is analysed.
+            Returns
+            -------
+            A keyword if it exists in the sentence, else None
+            """
     max_dist = 2
     i = max_dist + 1
     res = None
@@ -278,6 +301,15 @@ def check_slots():
         print_and_text_to_speech(food_questions.pop())
 
 def confirmation_question(slots_found):
+    """Function provides confirmation questions when slots are filled.
+    Parameters
+    ----------
+    slots_found : list
+        consists the slots that are filled by the last utterance of the user
+    Returns
+    -------
+    None
+    """
     for s in slots_found:
         if s == 'food':
             print('You are looking for {} food, correct?'.format(slots[s]))
