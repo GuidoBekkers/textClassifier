@@ -64,8 +64,8 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
 
         if response == 'affirm' or response == 'confirm':
             print_and_text_to_speech(
-                "The adress is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + " and the phone number is " +
-                matchlist.iloc[0, 4] + ".")
+                "The adress is " + str(matchlist.iloc[0, 5]) + ", " + str(matchlist.iloc[0, 6]) + " and the phone number is " +
+                str(matchlist.iloc[0, 4]) + ".")
             utterance = input().lower()
             check_for_bye(utterance)
 
@@ -153,7 +153,7 @@ def load_restaurants():
 
 
 def lookup(restaurants, area=None, food=None, pricerange=None):
-    """Function that looksup restaurants in the database based on inputted preferences.
+    """Function that looks up restaurants in the database based on inputted preferences.
     Parameters
     ----------
     restaurants : pandas DataFrame
@@ -170,6 +170,13 @@ def lookup(restaurants, area=None, food=None, pricerange=None):
     matched_restaurants : pandas DataFrame
         updated version of the df, containing the restaurants that match the given preferences
     """
+    if area == 'any':
+        area = None
+    if food == 'any':
+        food = None
+    if pricerange == 'any':
+        pricerange = None
+
     if area is not None:
         area = area.lower()
         restaurants = restaurants[(restaurants.area == area)]
@@ -221,8 +228,7 @@ def information_loop(restaurants):
         matched_restaurants = lookup(restaurants, slots['area'], slots['food'],
                                      slots['pricerange'])  # uses the lookup function to search for matched restaurants
 
-        if len(
-                matched_restaurants) < 2:  # if 0 or 1 matched restaurants are found, the loop breaks and returns either no restaurants or the one restaurant
+        if len(matched_restaurants) < 2:  # if 0 or 1 matched restaurants are found, the loop breaks and returns either no restaurants or the one restaurant
             break
 
         check_slots()  # since there are more options still available, the slots are checked to narrow down the search
@@ -258,25 +264,18 @@ def check_slots():
             pricerange_question)  # prints a question regarding the pricerange if that bit of knowledge is unknown
 
     elif not slots['food']:
-
+         # prints a question regarding the food if that bit of knowledge is unknown
         if not food_questions:  # This checks whether both the food questions have been asked, if so, the user has uttered an impossible foodtype wish
             # in that case, the user can restate a foodtype preference
             print_and_text_to_speech(
-                'Unfortunately, there are no options for that type of food. \nwould you like to restate your food preference?')
+                'Unfortunately, there are no options for that type of food. \nWhat kind of food would you like instead?')
 
-            answer = dialog_act_classifier(input())
-            if answer == 'affirm':
-                print_and_text_to_speech('What kind of food would you like instead?')
+            answer_alternative = input().lower()
 
-                answer_alternative = input().lower()
-
-                slots['food'] = answer_alternative  # if the user has restated a preference, the slots are updated
-
+            slots['food'] = answer_alternative  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
 
-        print_and_text_to_speech(
-            food_questions[0])  # prints a question regarding the pricerange if that bit of knowledge is unknown
-
+        print_and_text_to_speech(food_questions.pop())
 
 def confirmation_question(slots_found):
     for s in slots_found:
@@ -480,8 +479,7 @@ def a_or_b(restaurant_names):
 
             answer = int(input())
 
-        handle_suggestion(restaurant_name=restaurant_names[
-            answer])  # When an alternative is chosen, the name of the restaurant (on the given index in the dictionary) is passed to handle_suggestion
+        handle_suggestion(restaurant_name=restaurant_names[answer])  # When an alternative is chosen, the name of the restaurant (on the given index in the dictionary) is passed to handle_suggestion
 
 
 def restate():
@@ -743,16 +741,17 @@ def main():
     else:
         CONFIRMATION = False
 
-    print_and_text_to_speech('What kind of restaurant are you looking for?')
+    print_and_text_to_speech('How can I help you?')
 
     while True:
 
-        matched_restaurants = information_loop(restaurants)
+        information_loop(restaurants)
+        matched_restaurants = lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
 
         if len(matched_restaurants) == 0:  # If no matching restaurants found, find alternatives or restate preferences
             check_slots()
-            handle_alternatives(slots)
             information_loop(restaurants)
+            handle_alternatives(slots)
 
         elif len(matched_restaurants) == 1:  # If 1 matching restaurants found, suggest that restaurant
             handle_suggestion(matched_restaurants)
