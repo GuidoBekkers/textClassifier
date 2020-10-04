@@ -1,36 +1,9 @@
-from dialogActClassifier import dialog_act_classifier
+from dialog_act_classifier import dialog_act_classifier
 import implication as imp
 import pandas as pd
 import helping_methods as hm
-from gtts import gTTS
-from playsound import playsound
-import time
-
-def print_and_text_to_speech(string):
-    """Takes a string as input and prints it. If the user wants text-to-speech conversion, this function also converts and plays the speech
-    Parameters
-    ----------
-    string : str
-        the string that will be either printed and then converted to speech, or just printed
-    Returns
-    -------
-    Doesn't return, only prints and if applicable plays the speech file
-    """
-
-    global tts
-
-    print(string)
-
-    if tts:
-        language = 'en'
-
-        sound_to_play = gTTS(text=string, lang=language, slow=False)
-
-        unique_name = time.time()
-
-        sound_to_play.save("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
-
-        playsound("tts_mp3/{0}_text_to_speech.mp3".format(unique_name))
+import print_and_text_to_speech as pattt
+import helping_methods_with_print as hmwp
 
 
 def handle_suggestion(matchlist=None, restaurant_name=None):
@@ -54,67 +27,50 @@ def handle_suggestion(matchlist=None, restaurant_name=None):
 
     while len(matchlist) > 0:
 
-        print_and_text_to_speech(hm.restaurant_to_string(matchlist.iloc[0]))
-        print_and_text_to_speech('Would you like more information about this restaurant?')
+        pattt.print_and_text_to_speech(hm.restaurant_to_string(matchlist.iloc[0]), tts)
+        pattt.print_and_text_to_speech('Would you like more information about this restaurant?', tts)
         utterance = input().lower()
 
         response = dialog_act_classifier(utterance)  # response is een act
 
         if response == 'affirm' or response == 'confirm':
-            print_and_text_to_speech(hm.restaurant_info_to_string(matchlist.iloc[0]))
+            pattt.print_and_text_to_speech(hm.restaurant_info_to_string(matchlist.iloc[0]), tts)
             utterance = input().lower()
-            check_for_bye(utterance)
+            hmwp.check_for_bye(utterance, tts)
 
         elif response == 'inform' or response == 'request':
 
             while response == 'inform' or response == 'request':  # als de user om het adres of telefoonnummer vraagt
                 if 'address' in utterance:
-                    print_and_text_to_speech(
-                        "The address is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".")
+                    pattt.print_and_text_to_speech(
+                        "The address is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6] + ".", tts)
 
                 elif 'phone' in utterance or 'number' in utterance:
-                    print_and_text_to_speech("The phone number is " + matchlist.iloc[0, 4] + ".")
+                    pattt.print_and_text_to_speech("The phone number is " + matchlist.iloc[0, 4] + ".", tts)
 
                 else:
-                    print_and_text_to_speech(
-                        "I am sorry, I am not able to understand, here is all the available information")
+                    pattt.print_and_text_to_speech(
+                        "I am sorry, I am not able to understand, here is all the available information", tts)
 
-                    print_and_text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant " +
+                    pattt.print_and_text_to_speech(matchlist.iloc[0, 0] + " is a " + matchlist.iloc[0, 1] + " restaurant " +
                                              hm.area_to_sentence_par(matchlist.iloc[0, 2]) + " that serves " +
-                                             matchlist.iloc[0, 3] + ".")
+                                             matchlist.iloc[0, 3] + ".", tts)
 
-                    print_and_text_to_speech("The address is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[
-                        0, 6] + " and the phone number is " +
-                                             matchlist.iloc[0, 4] + ".")
+                    pattt.print_and_text_to_speech("The address is " + matchlist.iloc[0, 5] + ", " + matchlist.iloc[0, 6]
+                                                   + " and the phone number is " + matchlist.iloc[0, 4] + ".", tts)
 
                 utterance = input().lower()
                 response = dialog_act_classifier(utterance)
-                check_for_bye(utterance)
+                hmwp.check_for_bye(utterance, tts)
 
         elif response == 'deny' or response == 'negate':
             matchlist = matchlist.iloc[1:]
         else:
-            print_and_text_to_speech('Sorry I did not understand to you.')
+            pattt.print_and_text_to_speech('Sorry I did not understand to you.', tts)
 
-    print_and_text_to_speech('Let me see how I can help you!')
+    pattt.print_and_text_to_speech('Let me see how I can help you!', tts)
     check_slots()
     return
-  
-
-def check_for_bye(utterance):
-    """Checks if the user has said "bye" yet and closes down in case the user has
-    Parameters
-    ----------
-    utterance : str
-        the input of the user
-    Returns
-    -------
-    None
-    """
-    response = dialog_act_classifier(utterance)
-    if response == 'bye' or response in 'thankyou':
-        print_and_text_to_speech("Bye")
-        quit()
 
 
 def information_loop(restaurants):
@@ -130,6 +86,7 @@ def information_loop(restaurants):
     """
     first_sentence = True  # checks whether it is dealing with the first question of the conversation
     slots_found = []
+    slots_confirmed = []
 
     matched_restaurants = restaurants  # if all that slots have been filled,
     while slots['area'] == None or slots['pricerange'] == None or slots['food'] == None:
@@ -146,11 +103,12 @@ def information_loop(restaurants):
                         slots_found.append(s)
                         break
 
+        slots_found = [slot for slot in slots if slots[slot] is not None]
         if CONFIRMATION:  # if the user has stated to want confirmation, this part restates the understood preferences
             if dialog_act_classifier(utterance) == 'inform':
-                slots_found = [slot for slot in slots if slots[slot] is not None][:-1]
-                confirmation_question(slots_found)
-                slots_found = []
+                if slots_confirmed:
+                    slots_found = [x for x in slots_found if x not in slots_confirmed]
+                slots_confirmed.extend(hmwp.confirmation_question(slots_found, slots, tts))
 
         matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])  # uses the lookup function to search for matched restaurants
 
@@ -165,6 +123,16 @@ def information_loop(restaurants):
 
 
 def subtract_information_and_update_slots(utterance):
+    """Function extracts information from the user's utterance using keyword and pattern matching and updates slots
+    accordingly
+    Parameters
+    ----------
+    utterance : str
+        the input from the user
+    Returns
+    -------
+    None
+    """
     for key in filter(lambda x: slots[x] is None, slots):
         slots[key] = hm.keyword_matching(utterance, key)
         if slots[key] is None:
@@ -182,134 +150,22 @@ def check_slots():
     """
 
     if not slots['area']:
-        print_and_text_to_speech(area_question)  # prints a question regarding the area if that bit of knowledge is unknown
+
+        pattt.print_and_text_to_speech(hm.area_question, tts)  # prints a question regarding the area if that bit of knowledge is unknown
 
     elif not slots['pricerange']:
-        print_and_text_to_speech(pricerange_question)  # prints a question regarding the pricerange if that bit of knowledge is unknown
+        pattt.print_and_text_to_speech(hm.pricerange_question, tts)  # prints a question regarding the pricerange if that bit of knowledge is unknown
 
     elif not slots['food']:
         # prints a question regarding the food if that bit of knowledge is unknown
-        if not food_questions:  # This checks whether both the food questions have been asked, if so, the user has uttered an impossible foodtype wish
+        if not hm.food_questions:  # This checks whether both the food questions have been asked, if so, the user has uttered an impossible foodtype wish
             # in that case, the user can restate a foodtype preference
-            print_and_text_to_speech(
-                'Unfortunately, there are no options for that type of food.\nWhat kind of food would you like instead?')
+            pattt.print_and_text_to_speech(
+                'Unfortunately, there are no options for that type of food.\nWhat kind of food would you like instead?', tts)
 
             slots['food'] = input().lower()  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
-        print_and_text_to_speech(food_questions.pop())
-        
-
-def confirmation_question(slots_found):
-    """Function provides confirmation questions when slots are filled.
-    Parameters
-    ----------
-    slots_found : list
-        consists the slots that are filled by the last utterance of the user
-    Returns
-    -------
-    None
-    """
-    for s in slots_found:
-        if s == 'food':
-            print_and_text_to_speech('You are looking for {} food, correct?'.format(slots[s]))
-        elif s == 'pricerange':
-            print_and_text_to_speech('You prefer the price to be {}, correct?'.format(slots[s]))
-        elif s == 'area':
-            print_and_text_to_speech('So you want to eat in {} area of town?'.format(slots[s]))
-        answer = input()
-        if dialog_act_classifier(answer) != 'affirm':  # als de reactie geen bevestiging is, wordt het slot gereset
-            slots[s] = None
-
-
-def member_alternative(domain, preference):
-    """Function used to check which members in the set membership can be used to search for alternatives (example: thai and chinese can be swapped)
-    Parameters
-    ----------
-    domain : str
-        either 'area', 'food' or 'pricerange'
-    preference : str
-        contains the preference for a given domain (example: domain = 'area', preference = 'north')
-    Returns
-    -------
-    None if no preference is present for a given domain
-    updated_members : list
-        list containing the possible alternatives based on the set membership only
-    """
-
-    if preference == None:  # if no preference is found, the system needs to check first whether there is a preference for that domain
-        return
-
-    domain = domain.lower()
-    preference = preference.lower()
-
-    updated_members = []
-
-    for x in range(len(set_membership[domain])):
-
-        if preference in set_membership[domain][x]:  # checks if certain preferences are in the set_membership dictionary
-
-            for y in range(len(set_membership[domain][x])):
-                if set_membership[domain][x][y] not in updated_members:  # checks whether a certain preference isn't already in the possible members list
-                    updated_members.append(set_membership[domain][x][y])
-
-    if preference in updated_members:
-        updated_members.remove(preference)  # removes the current preference, since this has been added as part of the members, but plays no role in the alternatives
-    return updated_members
-
-
-def search_alternatives(slots):
-    """Searches for alternatives in the csv file using the possible members from member_alternative
-    Parameters
-    ----------
-    slots : dict
-        slots is the dictionary that holds the knowledge regarding the preferences per domain
-    Returns
-    -------
-    None if no member_alternatives can be found, possibly because of an empty slot
-    possible_restaurant_dict : dict
-        a dictionary containing the possible restaurants as a list (value) per domain (key)
-    """
-
-    possible_restaurants_dict = {}
-    possible_restaurants_dict['area'] = []
-    possible_restaurants_dict['food'] = []
-    possible_restaurants_dict['pricerange'] = []
-
-    for domain in ['area', 'food', 'pricerange']:
-
-        if member_alternative(domain, slots[domain]) == None:
-            break
-
-        alternatives_for_domain = member_alternative(domain,
-                                                     slots[domain])  # checks alternatives based on set membership
-
-        temp_slots = slots.copy()  # to use the slots, but to not change them, a copy is made to check for alternatives
-        temp_slots[domain] = []  # for storing more than one alternatives, a list is made per domain
-
-        for alt in alternatives_for_domain:
-
-            temp_slots[domain] = alt
-
-            if len(hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) == 1:
-                # if one alternative is found, this restaurant is added to the possible_restaurants_dict
-
-                restaurant = \
-                hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
-                    0]
-                possible_restaurants_dict[domain].append([restaurant[0], restaurant[1], restaurant[2], restaurant[3]])
-
-            elif len(hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) > 1:
-                # if more than one alternative is found, a loop goes over the possible restaurants and adds them to the possible_restaurants_dict
-
-                for rest in range(
-                        len(hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']))):
-                    restaurant = \
-                        hm.lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
-                            rest]
-                    possible_restaurants_dict[domain].append(
-                        [restaurant[0], restaurant[1], restaurant[2], restaurant[3]])
-
-    return possible_restaurants_dict
+        pattt.print_and_text_to_speech(hm.food_questions.pop())
 
 
 def handle_alternatives(slots):
@@ -322,46 +178,46 @@ def handle_alternatives(slots):
     -------
     Doesn't return anything, but calls a_or_b if there are several options, or asks if the user wants to restate preferences when no alternatives are possible
     """
-    number_of_alternatives = len(search_alternatives(slots)['area']) + len(search_alternatives(slots)['food']) + len(
-        search_alternatives(slots)['pricerange'])  # For checking how many alternatives are possible
+    number_of_alternatives = len(hm.search_alternatives(slots)['area']) + len(hm.search_alternatives(slots)['food']) + len(
+        hm.search_alternatives(slots)['pricerange'])  # For checking how many alternatives are possible
     restaurant_names = {}  # dict containing a restaurant name at a given index
     restaurant_counter = 0  # for indexing restaurant_names
 
     if number_of_alternatives > 0:
-        print_and_text_to_speech(
-            'Unfortunately, there are no restaurants found. \nThe following alternatives are available:')
+        pattt.print_and_text_to_speech(
+            'Unfortunately, there are no restaurants found. \nThe following alternatives are available:', tts)
 
         for domain in ['area', 'food', 'pricerange']:
 
-            if not len(search_alternatives(slots)[domain]) == 0:
+            if not len(hm.search_alternatives(slots)[domain]) == 0:
 
-                for option in range(len(search_alternatives(slots)[domain])):
-                    restaurant_names[restaurant_counter] = search_alternatives(slots)[domain][option][
+                for option in range(len(hm.search_alternatives(slots)[domain])):
+                    hm.restaurant_names[restaurant_counter] = hm.search_alternatives(slots)[domain][option][
                         0]  # adds restaurant to the dict
 
-                    print_and_text_to_speech(
-                        str(restaurant_counter) + ' : ' + search_alternatives(slots)[domain][option][
-                            0] + ' is a restaurant in the ' + search_alternatives(slots)[domain][option][
-                            2] + ' part of town that serves ' + search_alternatives(slots)[domain][option][
-                            3] + ' in the pricerange of ' + search_alternatives(slots)[domain][option][
-                            1])  # showing the alternatives to the user
+                    pattt.print_and_text_to_speech(
+                        str(restaurant_counter) + ' : ' + hm.search_alternatives(slots)[domain][option][
+                            0] + ' is a restaurant in the ' + hm.search_alternatives(slots)[domain][option][
+                            2] + ' part of town that serves ' + hm.search_alternatives(slots)[domain][option][
+                            3] + ' in the pricerange of ' + hm.search_alternatives(slots)[domain][option][
+                            1], tts)  # showing the alternatives to the user
 
                     restaurant_counter += 1  # for safely storing restaurant names at a unique index
                   
         a_or_b(restaurant_names)  # Letting the user either restate preferences (a) of choosing alternatives (b)
 
     else:  # if no alternatives are found, the user can change preferences
-        print_and_text_to_speech('There are no alternatives, would you like to change your preferences?')
+        pattt.print_and_text_to_speech('There are no alternatives, would you like to change your preferences?', tts)
 
         response = dialog_act_classifier(input())
         if response == 'affirm':
             restate()
 
         else:
-            print_and_text_to_speech('Then I am afraid that I can not help you')
+            pattt.print_and_text_to_speech('Then I am afraid that I can not help you', tts)
 
             response = input().lower()
-            check_for_bye(response)
+            hmwp.check_for_bye(response, tts)
 
 
 def a_or_b(restaurant_names):
@@ -374,11 +230,11 @@ def a_or_b(restaurant_names):
     -------
     Doesn't return anything, but either calls restate() if a, or
     """
-    print_and_text_to_speech('Would you like to: \n a: restate your preferences \n b: Choose one of these alternatives')
+    pattt.print_and_text_to_speech('Would you like to: \n a: restate your preferences \n b: Choose one of these alternatives', tts)
     answer_a_or_b = input()
 
     while answer_a_or_b not in ['a', 'b']:  # Handling misspells
-        print_and_text_to_speech('please type a or b')
+        pattt.print_and_text_to_speech('please type a or b', tts)
 
         answer_a_or_b = input()
 
@@ -386,13 +242,13 @@ def a_or_b(restaurant_names):
         restate()
 
     if answer_a_or_b == 'b':
-        print_and_text_to_speech('Which alternative would you like?')
+        pattt.print_and_text_to_speech('Which alternative would you like?', tts)
 
         answer = int(input())
 
         while answer not in range(len(restaurant_names)):
-            print_and_text_to_speech(
-                f'please type a number between 0 and {len(restaurant_names) - 1}')  # Handling misspells
+            pattt.print_and_text_to_speech(
+                f'please type a number between 0 and {len(restaurant_names) - 1}', tts)  # Handling misspells
 
             answer = int(input())
 
@@ -408,15 +264,16 @@ def restate():
     -------
     Doesn't return anything, but asks the user which domain and preference are desired to be changed
     """
-    print_and_text_to_speech('which domain would you like to change?')
+    pattt.print_and_text_to_speech('which domain would you like to change?', tts)
 
     answer_domain = input().lower()
 
     if answer_domain not in ['area', 'food', 'pricerange']:
-        print_and_text_to_speech('Please select area, food or pricerange.')  # This is done to catch the exception where the user misspells anything
+
+        pattt.print_and_text_to_speech('Please select area, food or pricerange.', tts)  # This is done to catch the exception where the user misspells anything
         answer_domain = input().lower()
 
-    print_and_text_to_speech('What alternative would you like?')
+    pattt.print_and_text_to_speech('What alternative would you like?', tts)
 
     answer_alternative = input().lower()
 
@@ -453,10 +310,10 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
     """
     matchlist_copy = matchlist.copy(deep=False)
     distinguishers = hm.find_distinguishers(matchlist)
-    print_and_text_to_speech("There are multiple restaurants left.")
+    pattt.print_and_text_to_speech("There are multiple restaurants left.", tts)
 
     while len(distinguishers) > 0 and matchlist.shape[0] > 1:
-        print_and_text_to_speech(hm.get_next_question(matchlist.columns[distinguishers[0]]))
+        pattt.print_and_text_to_speech(hm.get_next_question(matchlist.columns[distinguishers[0]]), tts)
         response = input().lower()
         d_act = dialog_act_classifier(response)
         if d_act == 'affirm':
@@ -467,11 +324,11 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
             distinguishers = hm.find_distinguishers(matchlist)
     hs = handle_suggestion(matchlist)
     if matchlist.shape[0] > 1:
-        print_and_text_to_speech("The remaining restaurants could not be further distinguished from one another")
+        pattt.print_and_text_to_speech("The remaining restaurants could not be further distinguished from one another", tts)
     if hs is None:
-        print_and_text_to_speech("There is no restaurant that satisfies all your preferences.\nWould you like to:\n"
-                                 + "a: Change your area, pricerange or foodtype\nb: Restate the other attributes")
-        ab = a_b_loop()
+        pattt.print_and_text_to_speech("There is no restaurant that satisfies all your preferences.\nWould you like to:\n"
+                                 + "a: Change your area, pricerange or foodtype\nb: Restate the other attributes", tts)
+        ab = hmwp.a_b_loop(tts)
         if ab == "a":
             return None
         elif ab == "b":
@@ -480,23 +337,6 @@ def implication_loop_recursive(matchlist: pd.DataFrame):
         return hs
 
 
-def a_b_loop():
-    """The input is checked and only returns if the user types "a" or "b", otherwise the user is told to choose either
-    a or b
-    Parameters
-    ----------
-    None
-    Returns
-    -------
-    The answer of the user ("a" or "b")
-    """
-    answer = input().lower()
-    if answer in ["a", "b"]:
-        return answer
-    else:
-        print_and_text_to_speech("Please type either a or b")
-        return a_b_loop()
-
 slots = {}
 questions = {}
 
@@ -504,28 +344,7 @@ slots['area'] = None
 slots['pricerange'] = None
 slots['food'] = None
 
-area_question = 'Which area would you like to dine in?'
-pricerange_question = 'What pricerange were you thinking of?'
-food_questions = ['Do you have any specific preferences regarding the type of food?',
-                  'What type of food are you looking for?']
-
 restaurants = hm.restaurants
-
-set_membership = {}  # this dictionary is for checking which preferences can be swapped for a member alternative (like cheap - moderate)
-set_membership['pricerange'] = {0: ['cheap', 'moderate'],
-                                1: ['moderate', 'expensive']}
-
-set_membership['area'] = {0: ['centre', 'north', 'west'],
-                          1: ['centre', 'north', 'east'],
-                          2: ['centre', 'south', 'west'],
-                          3: ['centre', 'south', 'east']}
-
-set_membership['food'] = {0: ['thai', 'chinese', 'korean', 'vietnamese', 'asian oriental'],
-                          1: ['mediterranean', 'spanish', 'portuguese', 'italian', 'romanian', 'tuscan', 'catalan'],
-                          2: ['french', 'european', 'bistro', 'swiss', 'gastropub', 'traditional'],
-                          3: ['north american', 'steakhouse', 'british'],
-                          4: ['lebanese', 'turkish', 'persian'],
-                          5: ['international', 'modern european', 'fusion']}
 
 possible_alternatives = {}
 
@@ -551,7 +370,7 @@ def main():
     else:
         tts = False
 
-    print_and_text_to_speech('Would you want confirmation for your preferences turned on? [yes/no]')
+    pattt.print_and_text_to_speech('Would you want confirmation for your preferences turned on? [yes/no]', tts)
 
     confirmation_answer = dialog_act_classifier(input())  # If yes, set text-to-speech(tts) to True
     if confirmation_answer == 'affirm':
@@ -561,7 +380,7 @@ def main():
         CONFIRMATION = False
 
     while True:
-        print_and_text_to_speech('How can I help you?')
+        pattt.print_and_text_to_speech('How can I help you?', tts)
 
         information_loop(restaurants)
         matched_restaurants = hm.lookup(restaurants, slots['area'], slots['food'], slots['pricerange'])
