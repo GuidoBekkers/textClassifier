@@ -165,7 +165,9 @@ def check_slots():
 
             slots['food'] = input().lower()  # if the user has restated a preference, the slots are updated
             return  # if the user doesn't want to restate preferences, return None and break out of check_slots
+
         pattt.print_and_text_to_speech(hm.food_questions.pop(),tts)
+
 
 
 def handle_alternatives(slots):
@@ -192,6 +194,7 @@ def handle_alternatives(slots):
             if not len(hm.search_alternatives(slots)[domain]) == 0:
 
                 for option in range(len(hm.search_alternatives(slots)[domain])):
+
                     restaurant_names[restaurant_counter] = hm.search_alternatives(slots)[domain][option][
                         0]  # adds restaurant to the dict
 

@@ -4,12 +4,35 @@ import Levenshtein as ls
 
 
 def keyword_matching(sentence, slot):
+    """Function checks if a keyword of a given slot is present in a given sentence. If so, the keyword is returned
+    Parameters
+    ----------
+    sentence : str
+        This is the string that needs to be analysed for keywords.
+    slot: str
+        The slot indicates for which keywords the sentence is analysed.
+    Returns
+    -------
+    A keyword if it exists in the sentence, else None
+    """
     for w in sentence.split():
         if w in keywords[slot]:
             return w
 
 
 def pattern_matching(sentence, slot):
+    """Function checks if a keyword of a given slot is present in a given sentence, using patterns. It also checks for
+    language errors.
+    Parameters
+    ----------
+    sentence : str
+        This is the string that needs to be analysed for keywords.
+    slot: str
+        The slot indicates for which keywords the sentence is analysed.
+    Returns
+    -------
+    A keyword if it exists in the sentence, else None
+    """
     max_dist = 2
     i = max_dist + 1
     res = None
@@ -93,19 +116,6 @@ def load_restaurants():
     return restaurants
 
 
-restaurants = load_restaurants()
-keywords = {'food': list(dict.fromkeys(list(restaurants.food))),
-            'area': ['west', 'north', 'south', 'centre', 'east'],
-            'pricerange': ['cheap', 'moderate', 'expensive'],
-            'type': ['restaurant', 'bar', 'brasserie']
-            }
-patterns = {'food': ['food'],
-            'area': ['part' 'area'],
-            'pricerange': ['priced', 'price'],
-            'type': []
-            }
-
-
 def restaurant_to_string(matchlist):
     """Turns a restaurant (row) into a string that the system can print
     Parameters
@@ -132,6 +142,97 @@ def restaurant_info_to_string(matchlist):
     """
     return "The address is " + str(matchlist.iloc[5]) + ", " + str(matchlist.iloc[6]) + " and the phone number is " \
            + str(matchlist.iloc[4]) + "."
+
+
+def member_alternative(domain, preference):
+    """Function used to check which members in the set membership can be used to search for alternatives (example: thai and chinese can be swapped)
+    Parameters
+    ----------
+    domain : str
+        either 'area', 'food' or 'pricerange'
+    preference : str
+        contains the preference for a given domain (example: domain = 'area', preference = 'north')
+    Returns
+    -------
+    None if no preference is present for a given domain
+    updated_members : list
+        list containing the possible alternatives based on the set membership only
+    """
+
+    if preference == None:  # if no preference is found, the system needs to check first whether there is a preference for that domain
+        return
+
+    domain = domain.lower()
+    preference = preference.lower()
+
+    updated_members = []
+
+    for x in range(len(set_membership[domain])):
+
+        if preference in set_membership[domain][x]:  # checks if certain preferences are in the set_membership dictionary
+
+            for y in range(len(set_membership[domain][x])):
+                if set_membership[domain][x][y] not in updated_members:  # checks whether a certain preference isn't already in the possible members list
+                    updated_members.append(set_membership[domain][x][y])
+
+    if preference in updated_members:
+        updated_members.remove(preference)  # removes the current preference, since this has been added as part of the members, but plays no role in the alternatives
+    return updated_members
+
+
+def search_alternatives(slots):
+    """Searches for alternatives in the csv file using the possible members from member_alternative
+    Parameters
+    ----------
+    slots : dict
+        slots is the dictionary that holds the knowledge regarding the preferences per domain
+    Returns
+    -------
+    None if no member_alternatives can be found, possibly because of an empty slot
+    possible_restaurant_dict : dict
+        a dictionary containing the possible restaurants as a list (value) per domain (key)
+    """
+
+    possible_restaurants_dict = {}
+    possible_restaurants_dict['area'] = []
+    possible_restaurants_dict['food'] = []
+    possible_restaurants_dict['pricerange'] = []
+
+    for domain in ['area', 'food', 'pricerange']:
+
+        if member_alternative(domain, slots[domain]) == None:
+            break
+
+        alternatives_for_domain = member_alternative(domain,
+                                                     slots[domain])  # checks alternatives based on set membership
+
+        temp_slots = slots.copy()  # to use the slots, but to not change them, a copy is made to check for alternatives
+        temp_slots[domain] = []  # for storing more than one alternatives, a list is made per domain
+
+        for alt in alternatives_for_domain:
+
+            temp_slots[domain] = alt
+
+            if len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) == 1:
+                # if one alternative is found, this restaurant is added to the possible_restaurants_dict
+
+                restaurant = \
+                lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
+                    0]
+                possible_restaurants_dict[domain].append([restaurant[0], restaurant[1], restaurant[2], restaurant[3]])
+
+            elif len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange'])) > 1:
+                # if more than one alternative is found, a loop goes over the possible restaurants and adds them to the possible_restaurants_dict
+
+                for rest in range(
+                        len(lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']))):
+                    restaurant = \
+                        lookup(restaurants, temp_slots['area'], temp_slots['food'], temp_slots['pricerange']).iloc[
+                            rest]
+                    possible_restaurants_dict[domain].append(
+                        [restaurant[0], restaurant[1], restaurant[2], restaurant[3]])
+
+    return possible_restaurants_dict
 
 
 #
@@ -197,3 +298,38 @@ def get_question_clause(cn: str):
         return cn + " restaurant"
     elif index in [7]:
         return answers[index] + cn + " food"
+
+
+restaurants = load_restaurants()
+keywords = {'food': list(dict.fromkeys(list(restaurants.food))),
+            'area': ['west', 'north', 'south', 'centre', 'east'],
+            'pricerange': ['cheap', 'moderate', 'expensive'],
+            'type': ['restaurant', 'bar', 'brasserie']
+            }
+patterns = {'food': ['food'],
+            'area': ['part' 'area'],
+            'pricerange': ['priced', 'price'],
+            'type': []
+            }
+
+# the dictionary below is for checking which preferences can be swapped for a member alternative (like cheap - moderate)
+set_membership = {}
+set_membership['pricerange'] = {0: ['cheap', 'moderate'],
+                                1: ['moderate', 'expensive']}
+
+set_membership['area'] = {0: ['centre', 'north', 'west'],
+                          1: ['centre', 'north', 'east'],
+                          2: ['centre', 'south', 'west'],
+                          3: ['centre', 'south', 'east']}
+
+set_membership['food'] = {0: ['thai', 'chinese', 'korean', 'vietnamese', 'asian oriental'],
+                          1: ['mediterranean', 'spanish', 'portuguese', 'italian', 'romanian', 'tuscan', 'catalan'],
+                          2: ['french', 'european', 'bistro', 'swiss', 'gastropub', 'traditional'],
+                          3: ['north american', 'steakhouse', 'british'],
+                          4: ['lebanese', 'turkish', 'persian'],
+                          5: ['international', 'modern european', 'fusion']}
+
+area_question = 'Which area would you like to dine in?'
+pricerange_question = 'What pricerange were you thinking of?'
+food_questions = ['Do you have any specific preferences regarding the type of food?',
+                  'What type of food are you looking for?']
